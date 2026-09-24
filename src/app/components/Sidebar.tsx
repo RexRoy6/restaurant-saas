@@ -58,7 +58,7 @@ export default function Sidebar({
           {/* Añadimos shrink-0 aquí para proteger el contenedor */}
           <span className="shrink-0 flex items-center justify-center" title="Sandiasoft">
             <img
-              src="/sandiasoft.png"
+              src="/hospiHost.png"
               alt="Sandiasoft Logo"
               // shrink-0 prohíbe que se comprima, object-contain protege la proporción
               className="h-8 w-8 object-contain shrink-0 transition-transform duration-200"

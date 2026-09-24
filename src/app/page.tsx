@@ -74,17 +74,16 @@ const AdminLogin: React.FC = () => {
         <div style={styles.left}>
           <div style={styles.brandBox}>
             <Image
-              src="/sandiasoft.png"
+              src="/hospiHost.png"
               alt="CRM Logo"
               style={{ borderRadius: 13 }}
               width={150}
               height={150}
             />
           </div>
-          <h1 style={styles.brandTitle}>CRM Corporate System</h1>
+          <h1 style={styles.brandTitle}>POS system</h1>
           <p style={styles.brandSubtitle}>
-            Manage customer relationships, contracts, services and operations
-            from a centralized enterprise platform.
+            Manage orders,costs and more!
           </p>
         </div>
 
@@ -205,7 +204,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: 160,
     height: 160,
     borderRadius: 14,
-    backgroundColor: "#1877f2",
+    backgroundColor: "#fff",
     color: "#fff",
     fontSize: 36,
     fontWeight: "bold",

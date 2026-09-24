@@ -1,13 +1,14 @@
 module.exports = {
   apps: [
     {
-      name: "crmsandiasoft",
+      name: "hospi-host-system",
       script: "npm",
       args: "start",
-      cwd: "/opt/crmsandiasoft/current",
+      cwd: "/opt/restaurant-saas/current",
       env: {
         NODE_ENV: "production",
-        PORT: 3001
+        //ver si hay que cambiar de puerto estaba en 3001
+        PORT: 3002
       }
     }
   ]
