@@ -5,6 +5,7 @@ import {
   timestamp,
   index,
   mysqlEnum,
+  uniqueIndex
 } from "drizzle-orm/mysql-core";
 
 /* ---------- BASE COLUMNS (audit + soft delete) ---------- */
@@ -29,18 +30,60 @@ export type UserRole = typeof USER_ROLES[number];
 
 export const userRoleEnum = mysqlEnum("user_role", USER_ROLES);
 
+/* ---------- catalogo de TIMEZONES ---------- */
+
+export const timezones = mysqlTable(
+  "timezones",
+  {
+    id: bigint("id", { mode: "number" })
+      .primaryKey()
+      .autoincrement(),
+
+    name: varchar("name", { length: 100 })
+      .notNull(),
+
+    label: varchar("label", { length: 150 })
+      .notNull(),
+  },
+  (table) => ({
+    nameUnique: uniqueIndex("timezones_name_unique")
+      .on(table.name),
+  }),
+);
+
 /* ---------- COMPANIES ---------- */
 
-export const companies = mysqlTable("companies", {
-  id: bigint("id", { mode: "number" })
-    .primaryKey()
-    .autoincrement(),
+export const companies = mysqlTable(
+  "companies",
+  {
+    id: bigint("id", { mode: "number" })
+      .primaryKey()
+      .autoincrement(),
 
-  name: varchar("name", { length: 255 })
-    .notNull(),
+    name: varchar("name", { length: 255 })
+      .notNull(),
 
-  ...baseColumns,
-});
+    slug: varchar("slug", { length: 120 })
+      .notNull(),
+
+    currency: mysqlEnum("currency", ["MXN"])
+      .notNull()
+      .default("MXN"),
+
+    timezoneId: bigint("timezone_id", { mode: "number" })
+      .notNull()
+      .references(() => timezones.id),
+
+    ...baseColumns,
+  },
+  (table) => ({
+    slugUnique: uniqueIndex("companies_slug_unique")
+      .on(table.slug),
+
+    timezoneIdx: index("companies_timezone_idx")
+      .on(table.timezoneId),
+  }),
+);
 
 /* ---------- USERS ---------- */
 
