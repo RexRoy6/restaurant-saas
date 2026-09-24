@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import PageHeader from "@/app/components/crm/PageHeader";
+import PageHeader from "@/app/components/PageHeader";
 import ChangePasswordForm from "@/app/components/settings/ChangePasswordForm";
 
 export default function SettingsPage() {

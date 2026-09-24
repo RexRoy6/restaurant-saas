@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import DashboardCard from "@/app/components/DashboardCard";
 import Toast from "@/app/components/Toast";
-import PageHeader from "@/app/components/crm/PageHeader";
+import PageHeader from "@/app/components/PageHeader";
 import { Home } from "lucide-react";
 
 const formatNumber = (num: number) => {
