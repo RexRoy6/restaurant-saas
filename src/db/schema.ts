@@ -4,8 +4,9 @@ import {
   varchar,
   timestamp,
   index,
+  uniqueIndex,
   mysqlEnum,
-  uniqueIndex
+  boolean,
 } from "drizzle-orm/mysql-core";
 
 /* ---------- BASE COLUMNS (audit + soft delete) ---------- */
@@ -85,6 +86,46 @@ export const companies = mysqlTable(
   }),
 );
 
+// productos nene
+export const products = mysqlTable(
+  "products",
+  {
+    id: bigint("id", { mode: "number" })
+      .primaryKey()
+      .autoincrement(),
+
+    companyId: bigint("company_id", { mode: "number" })
+      .notNull()
+      .references(() => companies.id),
+
+    name: varchar("name", { length: 255 })
+      .notNull(),
+
+    sku: varchar("sku", { length: 100 })
+      .notNull(),
+
+    priceInCents: bigint("price_in_cents", {
+      mode: "number",
+    }).notNull(),
+
+    isAvailable: boolean("is_available")
+      .notNull()
+      .default(true),
+
+    ...baseColumns,
+  },
+  (table) => ({
+    companyIdx: index("products_company_idx")
+      .on(table.companyId),
+
+    companySkuUnique: uniqueIndex(
+      "products_company_sku_unique",
+    ).on(
+      table.companyId,
+      table.sku,
+    ),
+  }),
+);
 /* ---------- USERS ---------- */
 
 export const users = mysqlTable(
