@@ -20,7 +20,7 @@ export default function Header({ searchTerm, setSearchTerm, logout }: Props) {
             height={28}
           />
         </div>
-        <span style={styles.logoText}>Sandiasoft</span>
+        <span style={styles.logoText}>Hospi-host</span>
       </div>
 
       <input

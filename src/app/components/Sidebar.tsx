@@ -12,13 +12,6 @@ import { canAccessRoute } from "@/lib/auth/canAccessRoute";
 
 const menu = [
   { label: "Inicio", href: "/company", icon: Home },
-  { label: "Registro Rápido", href: "/company/contracts/new", icon: Star },
-  { label: "Servicios", href: "/company/service", icon: Briefcase },
-  { label: "Clientes", href: "/company/clients", icon: Users },
-  { label: "Eventos", href: "/company/events", icon: AlarmClock },
-  { label: "Contratos", href: "/company/contracts", icon: FileText },
-  { label: "Pagos", href: "/company/payments", icon: CreditCard },
-  { label: "Calendario", href: "/company/calendar", icon: Calendar },
   { label: "Configuración", href: "/company/settings", icon: Settings },
 ];
 
@@ -56,10 +49,10 @@ export default function Sidebar({
       >
         <div className={`flex items-center overflow-hidden transition-all duration-200 ${collapsed ? "gap-0" : "gap-3"}`}>
           {/* Añadimos shrink-0 aquí para proteger el contenedor */}
-          <span className="shrink-0 flex items-center justify-center" title="Sandiasoft">
+          <span className="shrink-0 flex items-center justify-center" title="Hodpi-host">
             <img
               src="/hospiHost.png"
-              alt="Sandiasoft Logo"
+              alt="Hospi-host Logo"
               // shrink-0 prohíbe que se comprima, object-contain protege la proporción
               className="h-8 w-8 object-contain shrink-0 transition-transform duration-200"
             />
