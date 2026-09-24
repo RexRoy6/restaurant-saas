@@ -1,366 +1,99 @@
 import {
   and,
-  eq,
   isNull,
   count,
   sum,
-  exists,
-} from "drizzle-orm"
+} from "drizzle-orm";
 
-import { db } from "@/db"
-import { requireAuth } from "@/lib/auth/requireAuth"
-
-import {
-  clients,
-  services,
-  events,
-  contracts,
-  contractItems,
-  payments,
-  refunds,
-  contractHistory,
-  paymentItems,
-} from "@/db/schema"
-
+import { db } from "@/db";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 /**
  * ============================================================
  * TENANT DB
  * ============================================================
  *
- * 1. Tablas con companyId:
- *
- *    clients
- *    services
- *    events
- *    contracts
- *
- *    Se filtran directamente:
- *
- *    table.companyId = currentCompanyId
- *
- *
- * 2. Tablas sin companyId:
- *
- *    contractItems
- *    payments
- *    refunds
- *    contractHistory
- *    paymentItems
- *
- *    Se filtran mediante sus relaciones:
- *
- *    payments
- *      -> contracts
- *      -> contracts.companyId
- *
- *    contractItems
- *      -> contracts
- *      -> contracts.companyId
- *
- *    refunds
- *      -> payments
- *      -> contracts
- *      -> contracts.companyId
- *
- *    contractHistory
- *      -> contracts
- *      -> contracts.companyId
- *
- *    paymentItems
- *      -> payments
- *      -> contracts
- *      -> contracts.companyId
- *
+ * Helper central para operaciones aisladas por tenant.
  *
  * IMPORTANTE:
  *
- * Si una tabla no está configurada aquí, la operación FALLA.
+ * Actualmente no hay tablas de dominio registradas porque el
+ * dominio CRM anterior fue eliminado.
  *
- * Esto es intencional.
+ * Las nuevas tablas del restaurante (products, checks, orders,
+ * orderItems, payments, etc.) se registrarán aquí cuando sean
+ * creadas en el nuevo schema.
  *
- * Es mucho más seguro fallar que accidentalmente devolver
- * información de otro tenant.
+ * La estrategia es FAIL CLOSED:
  *
+ * Si una tabla no está configurada explícitamente para aislamiento
+ * multi-tenant, la operación falla.
+ *
+ * Nunca permitimos acceso accidental a una tabla sin conocer
+ * cómo debe aislarse por Company.
  * ============================================================
  */
 
-
-/**
- * Tipo genérico de tabla Drizzle.
- *
- * Mantenemos `any` aquí porque este helper trabaja con diferentes
- * tablas dinámicamente.
- */
-type AnyTable = any
-
+type AnyTable = any;
 
 /**
  * ============================================================
  * TENANT FILTER
  * ============================================================
  *
- * Devuelve la condición SQL necesaria para garantizar que una
- * tabla pertenece al tenant actual.
+ * Construye la condición que garantiza que una operación
+ * pertenece al tenant actual.
  *
- * Para tablas directas:
+ * Por ahora no existen tablas de dominio registradas.
  *
- *     table.companyId = companyId
- *
- * Para tablas indirectas:
- *
- *     EXISTS (...)
- *
- * Si la tabla no está registrada:
- *
- *     throw Error
- *
- * Nunca dejamos una tabla "sin filtro" accidentalmente.
+ * Cuando agreguemos las nuevas entidades del restaurante,
+ * cada una deberá configurarse explícitamente aquí.
  */
 function buildTenantWhere(
   table: AnyTable,
   companyId: number,
   isGlobalAdmin: boolean,
 ) {
-
   /**
-   * ----------------------------------------------------------
-   * GLOBAL ADMIN
-   * ----------------------------------------------------------
-   *
-   * El admin global puede acceder a todos los tenants.
+   * El admin global puede acceder sin filtro de tenant.
    */
   if (isGlobalAdmin) {
-    return undefined
+    return undefined;
   }
 
-
   /**
-   * ----------------------------------------------------------
-   * DIRECT TENANT TABLES
-   * ----------------------------------------------------------
-   *
-   * Estas tablas tienen companyId directamente.
+   * Evita warnings por parámetros que todavía no tienen
+   * consumidores hasta registrar el nuevo dominio.
    */
-  if (table === clients) {
-    return eq(clients.companyId, companyId)
-  }
-
-  if (table === services) {
-    return eq(services.companyId, companyId)
-  }
-
-  if (table === events) {
-    return eq(events.companyId, companyId)
-  }
-
-  if (table === contracts) {
-    return eq(contracts.companyId, companyId)
-  }
-
+  void table;
+  void companyId;
 
   /**
-   * ----------------------------------------------------------
-   * CONTRACT ITEMS
-   * ----------------------------------------------------------
+   * FAIL CLOSED.
    *
-   * contractItems
-   *      ↓
-   * contracts
-   *      ↓
-   * companyId
-   *
-   * Verificamos que el contractId pertenezca al tenant actual.
-   */
-  if (table === contractItems) {
-    return exists(
-      db
-        .select({
-          id: contracts.id,
-        })
-        .from(contracts)
-        .where(
-          and(
-            eq(contracts.id, contractItems.contractId),
-            eq(contracts.companyId, companyId),
-            isNull(contracts.deletedAt),
-          ),
-        ),
-    )
-  }
-
-
-  /**
-   * ----------------------------------------------------------
-   * PAYMENTS
-   * ----------------------------------------------------------
-   *
-   * payments
-   *      ↓
-   * contracts
-   *      ↓
-   * companyId
-   *
-   * Esto corrige el bug principal que encontramos.
-   */
-  if (table === payments) {
-    return exists(
-      db
-        .select({
-          id: contracts.id,
-        })
-        .from(contracts)
-        .where(
-          and(
-            eq(contracts.id, payments.contractId),
-            eq(contracts.companyId, companyId),
-            isNull(contracts.deletedAt),
-          ),
-        ),
-    )
-  }
-
-
-  /**
-   * ----------------------------------------------------------
-   * REFUNDS
-   * ----------------------------------------------------------
-   *
-   * refunds
-   *      ↓
-   * payments
-   *      ↓
-   * contracts
-   *      ↓
-   * companyId
-   */
-  if (table === refunds) {
-    return exists(
-      db
-        .select({
-          id: contracts.id,
-        })
-        .from(payments)
-        .innerJoin(
-          contracts,
-          eq(payments.contractId, contracts.id),
-        )
-        .where(
-          and(
-            eq(payments.id, refunds.paymentId),
-            eq(contracts.companyId, companyId),
-            isNull(payments.deletedAt),
-            isNull(contracts.deletedAt),
-          ),
-        ),
-    )
-  }
-
-
-  /**
-   * ----------------------------------------------------------
-   * CONTRACT HISTORY
-   * ----------------------------------------------------------
-   *
-   * contractHistory
-   *      ↓
-   * contracts
-   *      ↓
-   * companyId
-   */
-  if (table === contractHistory) {
-    return exists(
-      db
-        .select({
-          id: contracts.id,
-        })
-        .from(contracts)
-        .where(
-          and(
-            eq(contracts.id, contractHistory.contractId),
-            eq(contracts.companyId, companyId),
-            isNull(contracts.deletedAt),
-          ),
-        ),
-    )
-  }
-
-
-  /**
-   * ----------------------------------------------------------
-   * PAYMENT ITEMS
-   * ----------------------------------------------------------
-   *
-   * paymentItems
-   *      ↓
-   * payments
-   *      ↓
-   * contracts
-   *      ↓
-   * companyId
-   *
-   * Validamos el payment.
-   */
-  if (table === paymentItems) {
-    return exists(
-      db
-        .select({
-          id: contracts.id,
-        })
-        .from(payments)
-        .innerJoin(
-          contracts,
-          eq(payments.contractId, contracts.id),
-        )
-        .where(
-          and(
-            eq(payments.id, paymentItems.paymentId),
-            eq(contracts.companyId, companyId),
-            isNull(payments.deletedAt),
-            isNull(contracts.deletedAt),
-          ),
-        ),
-    )
-  }
-
-
-  /**
-   * ----------------------------------------------------------
-   * UNKNOWN TABLE
-   * ----------------------------------------------------------
-   *
-   * MUY IMPORTANTE:
-   *
-   * Nunca devolver undefined aquí.
-   *
-   * Si hacemos eso, accidentalmente podríamos ejecutar:
-   *
-   * SELECT * FROM some_table
-   *
-   * y exponer información de otro tenant.
+   * Ninguna tabla nueva obtiene acceso automáticamente.
    */
   throw new Error(
     "Tenant isolation is not configured for this table.",
-  )
+  );
 }
-
 
 /**
  * ============================================================
  * PARENT OWNERSHIP VALIDATION
  * ============================================================
  *
- * Se utiliza principalmente para INSERT.
+ * Valida relaciones parent -> child antes de INSERT.
  *
- * Ejemplo:
+ * Actualmente no existen tablas de dominio registradas.
  *
- * Un usuario de Company A intenta crear:
+ * Cuando agreguemos relaciones como:
  *
- * payment {
- *   contractId: contratoDeCompanyB
- * }
+ * order -> check
+ * orderItem -> order
+ * payment -> check
  *
- * Esta función debe impedirlo.
+ * sus validaciones deberán configurarse explícitamente aquí.
  */
 async function assertParentBelongsToTenant(
   table: AnyTable,
@@ -368,289 +101,24 @@ async function assertParentBelongsToTenant(
   companyId: number,
   isGlobalAdmin: boolean,
 ) {
-
   /**
-   * Global admin puede trabajar con cualquier tenant.
+   * El admin global puede trabajar con cualquier tenant.
    */
   if (isGlobalAdmin) {
-    return
+    return;
   }
 
+  void table;
+  void values;
+  void companyId;
 
   /**
-   * ----------------------------------------------------------
-   * DIRECT TENANT TABLES
-   * ----------------------------------------------------------
-   *
-   * El insert() agregará automáticamente companyId.
-   *
-   * No necesitamos validar un parent.
-   */
-  if (
-    table === clients ||
-    table === services ||
-    table === events ||
-    table === contracts
-  ) {
-    return
-  }
-
-
-  /**
-   * ----------------------------------------------------------
-   * CONTRACT ITEMS
-   * ----------------------------------------------------------
-   */
-  if (table === contractItems) {
-
-    if (!values.contractId) {
-      throw new Error(
-        "contractId is required for contractItems",
-      )
-    }
-
-    const contract = await db
-      .select({
-        id: contracts.id,
-      })
-      .from(contracts)
-      .where(
-        and(
-          eq(contracts.id, values.contractId),
-          eq(contracts.companyId, companyId),
-          isNull(contracts.deletedAt),
-        ),
-      )
-      .limit(1)
-
-    if (!contract.length) {
-      throw new Error(
-        "Tenant violation: contract does not belong to current company.",
-      )
-    }
-
-    return
-  }
-
-
-  /**
-   * ----------------------------------------------------------
-   * PAYMENTS
-   * ----------------------------------------------------------
-   */
-  if (table === payments) {
-
-    if (!values.contractId) {
-      throw new Error(
-        "contractId is required for payments",
-      )
-    }
-
-    const contract = await db
-      .select({
-        id: contracts.id,
-      })
-      .from(contracts)
-      .where(
-        and(
-          eq(contracts.id, values.contractId),
-          eq(contracts.companyId, companyId),
-          isNull(contracts.deletedAt),
-        ),
-      )
-      .limit(1)
-
-    if (!contract.length) {
-      throw new Error(
-        "Tenant violation: contract does not belong to current company.",
-      )
-    }
-
-    return
-  }
-
-
-  /**
-   * ----------------------------------------------------------
-   * REFUNDS
-   * ----------------------------------------------------------
-   */
-  if (table === refunds) {
-
-    if (!values.paymentId) {
-      throw new Error(
-        "paymentId is required for refunds",
-      )
-    }
-
-    const payment = await db
-      .select({
-        id: payments.id,
-      })
-      .from(payments)
-      .innerJoin(
-        contracts,
-        eq(payments.contractId, contracts.id),
-      )
-      .where(
-        and(
-          eq(payments.id, values.paymentId),
-          eq(contracts.companyId, companyId),
-          isNull(payments.deletedAt),
-          isNull(contracts.deletedAt),
-        ),
-      )
-      .limit(1)
-
-    if (!payment.length) {
-      throw new Error(
-        "Tenant violation: payment does not belong to current company.",
-      )
-    }
-
-    return
-  }
-
-
-  /**
-   * ----------------------------------------------------------
-   * CONTRACT HISTORY
-   * ----------------------------------------------------------
-   */
-  if (table === contractHistory) {
-
-    if (!values.contractId) {
-      throw new Error(
-        "contractId is required for contractHistory",
-      )
-    }
-
-    const contract = await db
-      .select({
-        id: contracts.id,
-      })
-      .from(contracts)
-      .where(
-        and(
-          eq(contracts.id, values.contractId),
-          eq(contracts.companyId, companyId),
-          isNull(contracts.deletedAt),
-        ),
-      )
-      .limit(1)
-
-    if (!contract.length) {
-      throw new Error(
-        "Tenant violation: contract does not belong to current company.",
-      )
-    }
-
-    return
-  }
-
-
-  /**
-   * ----------------------------------------------------------
-   * PAYMENT ITEMS
-   * ----------------------------------------------------------
-   *
-   * Aquí validamos:
-   *
-   * payment → contract → company
-   *
-   * y también:
-   *
-   * contractItem → contract → company
-   *
-   * para evitar mezclar registros entre tenants.
-   */
-  if (table === paymentItems) {
-
-    if (!values.paymentId) {
-      throw new Error(
-        "paymentId is required for paymentItems",
-      )
-    }
-
-    if (!values.contractItemId) {
-      throw new Error(
-        "contractItemId is required for paymentItems",
-      )
-    }
-
-
-    /**
-     * Validar payment.
-     */
-    const payment = await db
-      .select({
-        id: payments.id,
-      })
-      .from(payments)
-      .innerJoin(
-        contracts,
-        eq(payments.contractId, contracts.id),
-      )
-      .where(
-        and(
-          eq(payments.id, values.paymentId),
-          eq(contracts.companyId, companyId),
-          isNull(payments.deletedAt),
-          isNull(contracts.deletedAt),
-        ),
-      )
-      .limit(1)
-
-    if (!payment.length) {
-      throw new Error(
-        "Tenant violation: payment does not belong to current company.",
-      )
-    }
-
-
-    /**
-     * Validar contractItem.
-     */
-    const contractItem = await db
-      .select({
-        id: contractItems.id,
-      })
-      .from(contractItems)
-      .innerJoin(
-        contracts,
-        eq(contractItems.contractId, contracts.id),
-      )
-      .where(
-        and(
-          eq(
-            contractItems.id,
-            values.contractItemId,
-          ),
-          eq(contracts.companyId, companyId),
-          isNull(contractItems.deletedAt),
-          isNull(contracts.deletedAt),
-        ),
-      )
-      .limit(1)
-
-    if (!contractItem.length) {
-      throw new Error(
-        "Tenant violation: contractItem does not belong to current company.",
-      )
-    }
-
-    return
-  }
-
-
-  /**
-   * Tabla no configurada.
+   * FAIL CLOSED.
    */
   throw new Error(
     "Tenant insert isolation is not configured for this table.",
-  )
+  );
 }
-
 
 /**
  * ============================================================
@@ -658,12 +126,10 @@ async function assertParentBelongsToTenant(
  * ============================================================
  */
 export async function tenantDb() {
-
   const {
     companyId,
     role,
-  } = await requireAuth()
-
+  } = await requireAuth();
 
   /**
    * Admin global:
@@ -673,68 +139,51 @@ export async function tenantDb() {
    */
   const isGlobalAdmin =
     role === "admin" &&
-    companyId === null
-
+    companyId === null;
 
   /**
    * Todos los usuarios normales necesitan tenant.
    */
   if (!isGlobalAdmin && !companyId) {
-    throw new Error("Tenant required")
+    throw new Error("Tenant required");
   }
 
+  const currentCompanyId = Number(companyId);
 
   /**
-   * Para TypeScript.
-   */
-  const currentCompanyId = Number(companyId)
-
-
-  /**
-   * ----------------------------------------------------------
+   * ==========================================================
    * BUILD WHERE
-   * ----------------------------------------------------------
+   * ==========================================================
    */
   function buildWhere(
     table: AnyTable,
     extraWhere?: any,
   ) {
-
     /**
-     * Global admin:
-     *
-     * solamente usa extraWhere.
+     * El admin global no necesita tenant filter.
      */
     if (isGlobalAdmin) {
-      return extraWhere ?? undefined
+      return extraWhere ?? undefined;
     }
 
-
-    /**
-     * Tenant normal.
-     */
     const tenantWhere = buildTenantWhere(
       table,
       currentCompanyId,
       isGlobalAdmin,
-    )
-
+    );
 
     if (!tenantWhere) {
       throw new Error(
         "Tenant isolation could not be established.",
-      )
+      );
     }
-
 
     return extraWhere
       ? and(tenantWhere, extraWhere)
-      : tenantWhere
+      : tenantWhere;
   }
 
-
   return {
-
     /**
      * ========================================================
      * COUNT
@@ -744,26 +193,24 @@ export async function tenantDb() {
       table: AnyTable,
       extraWhere?: any,
     ) {
-
-      const baseWhere = isNull(table.deletedAt)
+      const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
         table,
         extraWhere
           ? and(baseWhere, extraWhere)
           : baseWhere,
-      )
+      );
 
       const [result] = await db
         .select({
           count: count(),
         })
         .from(table)
-        .where(where)
+        .where(where);
 
-      return Number(result?.count ?? 0)
+      return Number(result?.count ?? 0);
     },
-
 
     /**
      * ========================================================
@@ -775,26 +222,24 @@ export async function tenantDb() {
       column: AnyTable,
       extraWhere?: any,
     ) {
-
-      const baseWhere = isNull(table.deletedAt)
+      const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
         table,
         extraWhere
           ? and(baseWhere, extraWhere)
           : baseWhere,
-      )
+      );
 
       const [result] = await db
         .select({
           total: sum(column),
         })
         .from(table)
-        .where(where)
+        .where(where);
 
-      return Number(result?.total ?? 0)
+      return Number(result?.total ?? 0);
     },
-
 
     /**
      * ========================================================
@@ -805,15 +250,14 @@ export async function tenantDb() {
       table: AnyTable,
       extraWhere?: any,
     ) {
-
-      const baseWhere = isNull(table.deletedAt)
+      const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
         table,
         extraWhere
           ? and(baseWhere, extraWhere)
           : baseWhere,
-      )
+      );
 
       const [result] = await db
         .select({
@@ -821,11 +265,10 @@ export async function tenantDb() {
         })
         .from(table)
         .where(where)
-        .limit(1)
+        .limit(1);
 
-      return Number(result?.exists ?? 0) > 0
+      return Number(result?.exists ?? 0) > 0;
     },
-
 
     /**
      * ========================================================
@@ -836,37 +279,33 @@ export async function tenantDb() {
       table: AnyTable,
       extraWhere?: any,
     ) {
-
-      const baseWhere = isNull(table.deletedAt)
+      const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
         table,
         extraWhere
           ? and(baseWhere, extraWhere)
           : baseWhere,
-      )
+      );
 
       return db
         .select()
         .from(table)
-        .where(where)
+        .where(where);
     },
-
 
     /**
      * ========================================================
      * FIND MANY RAW
      * ========================================================
      *
-     * Incluye soft deleted.
-     *
-     * PERO sigue respetando tenant isolation.
+     * Incluye soft deleted, pero continúa respetando
+     * tenant isolation.
      */
     findManyRaw(
       table: AnyTable,
       extraWhere?: any,
     ) {
-
       return db
         .select()
         .from(table)
@@ -875,9 +314,8 @@ export async function tenantDb() {
             table,
             extraWhere,
           ),
-        )
+        );
     },
-
 
     /**
      * ========================================================
@@ -888,15 +326,14 @@ export async function tenantDb() {
       table: AnyTable,
       extraWhere?: any,
     ) {
-
-      const baseWhere = isNull(table.deletedAt)
+      const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
         table,
         extraWhere
           ? and(baseWhere, extraWhere)
           : baseWhere,
-      )
+      );
 
       return db
         .select()
@@ -905,9 +342,8 @@ export async function tenantDb() {
         .limit(1)
         .then(
           (rows) => rows[0] ?? null,
-        )
+        );
     },
-
 
     /**
      * ========================================================
@@ -918,7 +354,6 @@ export async function tenantDb() {
       table: AnyTable,
       extraWhere?: any,
     ) {
-
       return db
         .select()
         .from(table)
@@ -931,9 +366,8 @@ export async function tenantDb() {
         .limit(1)
         .then(
           (rows) => rows[0] ?? null,
-        )
+        );
     },
-
 
     /**
      * ========================================================
@@ -944,75 +378,35 @@ export async function tenantDb() {
       table: AnyTable,
       values: any,
     ) {
-
-      /**
-       * Primero validamos ownership para tablas indirectas.
-       */
       await assertParentBelongsToTenant(
         table,
         values,
         currentCompanyId,
         isGlobalAdmin,
-      )
-
+      );
 
       /**
-       * Global admin:
+       * Global admin.
        *
-       * no agregamos companyId.
+       * No asumimos automáticamente que una tabla tenga companyId.
        */
       if (isGlobalAdmin) {
         return db
           .insert(table)
-          .values(values)
+          .values(values);
       }
-
 
       /**
-       * Tablas directas:
+       * FAIL CLOSED.
        *
-       * agregar companyId automáticamente.
+       * Cuando registremos las nuevas tablas decidiremos aquí
+       * cuáles reciben companyId automáticamente y cuáles
+       * requieren validación mediante su parent.
        */
-      if (
-        table === clients ||
-        table === services ||
-        table === events ||
-        table === contracts
-      ) {
-
-        return db
-          .insert(table)
-          .values({
-            ...values,
-            companyId: currentCompanyId,
-          })
-      }
-
-
-      /**
-       * Tablas indirectas:
-       *
-       * NO agregamos companyId porque no existe.
-       */
-      if (
-        table === contractItems ||
-        table === payments ||
-        table === refunds ||
-        table === contractHistory ||
-        table === paymentItems
-      ) {
-
-        return db
-          .insert(table)
-          .values(values)
-      }
-
-
       throw new Error(
         "Tenant insert isolation is not configured for this table.",
-      )
+      );
     },
-
 
     /**
      * ========================================================
@@ -1024,22 +418,20 @@ export async function tenantDb() {
       values: any,
       extraWhere?: any,
     ) {
-
-      const baseWhere = isNull(table.deletedAt)
+      const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
         table,
         extraWhere
           ? and(baseWhere, extraWhere)
           : baseWhere,
-      )
+      );
 
       return db
         .update(table)
         .set(values)
-        .where(where)
+        .where(where);
     },
-
 
     /**
      * ========================================================
@@ -1050,30 +442,28 @@ export async function tenantDb() {
       table: AnyTable,
       extraWhere?: any,
     ) {
-
       if (!table.deletedAt) {
         throw new Error(
           "Soft delete not supported on this table",
-        )
+        );
       }
 
-      const baseWhere = isNull(table.deletedAt)
+      const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
         table,
         extraWhere
           ? and(baseWhere, extraWhere)
           : baseWhere,
-      )
+      );
 
       return db
         .update(table)
         .set({
           deletedAt: new Date(),
         })
-        .where(where)
+        .where(where);
     },
-
 
     /**
      * ========================================================
@@ -1084,16 +474,15 @@ export async function tenantDb() {
       table: AnyTable,
       extraWhere?: any,
     ) {
-
       if (!isGlobalAdmin) {
         throw new Error(
           "Force delete requires global admin",
-        )
+        );
       }
 
       return db
         .delete(table)
-        .where(extraWhere)
+        .where(extraWhere);
     },
-  }
+  };
 }
