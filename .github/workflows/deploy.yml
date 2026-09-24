@@ -1,0 +1,70 @@
+name: Deploy crmsandiasoft Next.js (Full Install)
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Prepare SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to VPS
+      run: |
+        set -e
+        COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}
+        RELEASE_DIR="/opt/crmsandiasoft/releases/${COMMIT_SHORT_SHA}"
+
+        # Create release directory
+        ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "
+          mkdir -p ${RELEASE_DIR}
+          chown www-data:www-data ${RELEASE_DIR}
+        "
+
+        # Upload full source
+        rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
+          --exclude node_modules \
+          --exclude .git \
+          --exclude .github \
+          ./ ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:${RELEASE_DIR}/
+
+        # Link env file
+        ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "
+          ln -nfs /opt/crmsandiasoft/.env.production ${RELEASE_DIR}/.env
+        "
+
+        # Install + build on VPS
+        ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "
+          cd ${RELEASE_DIR}
+          npm ci --production=false
+          npm run build
+        "
+
+        # Switch release
+        ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "
+          cd /opt/crmsandiasoft
+          ln -nfs releases/${COMMIT_SHORT_SHA} current
+        "
+
+        # Restart app
+        ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "
+          cd /opt/crmsandiasoft/current
+          pm2 delete crmsandiasoft || true
+          pm2 start ecosystem.config.js
+          pm2 save
+        "
+
+        # Keep only last 5 releases
+        ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "
+          cd /opt/crmsandiasoft
+          ls -1dt releases/* | tail -n +6 | xargs rm -rf || true
+        "

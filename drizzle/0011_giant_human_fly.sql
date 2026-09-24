@@ -1,0 +1,1 @@
+ALTER TABLE `contract_items` ADD `service_notes` varchar(1000);

@@ -1,0 +1,1 @@
+ALTER TABLE `contracts` ADD CONSTRAINT `contracts_company_event_unique` UNIQUE(`company_id`,`event_id`);

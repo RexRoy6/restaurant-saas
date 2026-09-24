@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+@layer base {
+  :root {
+    /* Minimalismo Corporativo */
+    --background: #f9fafb; /* Fondo gris muy claro para contrastar las tarjetas */
+    --foreground: #111827; /* Texto principal negro/gris muy oscuro */
+    
+    --card: #ffffff;
+    --card-foreground: #111827;
+    
+    --border: #e5e7eb; /* Gris claro para los separadores sutiles */
+    --text-muted: #6b7280; /* Gris medio para correos y textos inactivos */
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Aseguramos feedback visual de interactividad por defecto */
+  button, a {
+    cursor: pointer;
+  }
+}
