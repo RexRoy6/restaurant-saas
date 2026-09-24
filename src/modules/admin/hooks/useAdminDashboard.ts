@@ -29,7 +29,6 @@ export function useAdminDashboard() {
 
   const [timezones, setTimezones] = useState<Timezone[]>([]);
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
 
 
   /* obtener zonas horarias */
@@ -92,7 +91,6 @@ export function useAdminDashboard() {
 
       setNewCompanyName("");
       setNewCompanyTimezoneId(null);
-      setShowCreateModal(false);
 
       await loadCompanies();
     } catch {
@@ -144,13 +142,11 @@ export function useAdminDashboard() {
     searchTerm,
     newCompanyName,
     newCompanyTimezoneId,
-    showCreateModal,
 
     setSearchTerm,
     setError,
     setNewCompanyName,
     setNewCompanyTimezoneId,
-    setShowCreateModal,
 
     createCompany: handleCreateCompany,
   };
