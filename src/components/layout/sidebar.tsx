@@ -7,9 +7,6 @@ export default function Sidebar({ user }: { user: User | null }) {
       <div>
         <p style={styles.sidebarTitle}>MENU</p>
         <button style={styles.sidebarActive}>Home</button>
-        <button style={styles.sidebarItem}>Services</button>
-        <button style={styles.sidebarItem}>Clients</button>
-        <button style={styles.sidebarItem}>Events</button>
       </div>
       <div>
         <p style={styles.sidebarTitle}>SOPORTE</p>

@@ -12,13 +12,6 @@ import { canAccessRoute } from "@/lib/auth/canAccessRoute";
 
 const menu = [
   { label: "Inicio", href: "/company", icon: Home },
-  { label: "Registro Rápido", href: "/company/contracts/new", icon: Star },
-  { label: "Servicios", href: "/company/service", icon: Briefcase },
-  { label: "Clientes", href: "/company/clients", icon: Users },
-  { label: "Eventos", href: "/company/events", icon: AlarmClock },
-  { label: "Contratos", href: "/company/contracts", icon: FileText },
-  { label: "Pagos", href: "/company/payments", icon: CreditCard },
-  { label: "Calendario", href: "/company/calendar", icon: Calendar },
   { label: "Configuración", href: "/company/settings", icon: Settings },
 ];
 
