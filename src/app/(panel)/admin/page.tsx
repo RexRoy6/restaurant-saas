@@ -17,8 +17,13 @@ export default function AdminPage() {
     setError,
     creating,
     createCompany,
+
     newCompanyName,
     setNewCompanyName,
+
+    timezones,
+    newCompanyTimezoneId,
+    setNewCompanyTimezoneId,
   } = useAdminDashboard();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -36,9 +41,14 @@ export default function AdminPage() {
       </main>
 
       {showCreateModal && (
+
+
         <CreateCompanyModal
           name={newCompanyName}
           setName={setNewCompanyName}
+          timezoneId={newCompanyTimezoneId}
+          setTimezoneId={setNewCompanyTimezoneId}
+          timezones={timezones}
           creating={creating}
           onCreate={createCompany}
           onClose={() => setShowCreateModal(false)}

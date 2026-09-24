@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { Company, User, Metrics } from "../types/admin";
+import { Company, User, Metrics, Timezone } from "../types/admin";
 import {
   fetchCompanies,
   fetchMe,
   createCompany,
+  fetchTimezones,
 } from "../services/adminService";
 
 export function useAdminDashboard() {
@@ -23,7 +24,23 @@ export function useAdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const [newCompanyName, setNewCompanyName] = useState("");
+  const [newCompanyTimezoneId, setNewCompanyTimezoneId] =
+    useState<number | null>(null);
+
+  const [timezones, setTimezones] = useState<Timezone[]>([]);
+
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+
+  /* obtener zonas horarias */
+  const loadTimezones = async () => {
+    try {
+      const data = await fetchTimezones();
+      setTimezones(data);
+    } catch {
+      setError("Error al cargar zonas horarias");
+    }
+  };
 
   /* obtener usuario */
   const loadUser = async () => {
@@ -60,13 +77,21 @@ export function useAdminDashboard() {
       setError("El nombre de la empresa es obligatorio");
       return;
     }
+    if (!newCompanyTimezoneId) {
+      setError("La zona horaria es obligatoria");
+      return;
+    }
 
     try {
       setCreating(true);
 
-      await createCompany(newCompanyName);
+      await createCompany(
+        newCompanyName,
+        newCompanyTimezoneId,
+      );
 
       setNewCompanyName("");
+      setNewCompanyTimezoneId(null);
       setShowCreateModal(false);
 
       await loadCompanies();
@@ -80,6 +105,7 @@ export function useAdminDashboard() {
   useEffect(() => {
     loadUser();
     loadCompanies();
+    loadTimezones();
   }, []);
 
   /* métricas */
@@ -107,6 +133,7 @@ export function useAdminDashboard() {
     user,
     companies,
     filteredCompanies,
+    timezones,
 
     metrics,
 
@@ -116,11 +143,13 @@ export function useAdminDashboard() {
 
     searchTerm,
     newCompanyName,
+    newCompanyTimezoneId,
     showCreateModal,
 
     setSearchTerm,
     setError,
     setNewCompanyName,
+    setNewCompanyTimezoneId,
     setShowCreateModal,
 
     createCompany: handleCreateCompany,

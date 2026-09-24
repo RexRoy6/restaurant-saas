@@ -1,4 +1,4 @@
-import { Company, User } from "../types/admin";
+import { Company, User,Timezone } from "../types/admin";
 
 export async function fetchMe(): Promise<User | null> {
   const res = await fetch("/api/admin/me", {
@@ -27,19 +27,46 @@ export async function fetchCompanies(): Promise<Company[]> {
   return data;
 }
 
-export async function createCompany(name: string) {
+export async function createCompany(
+  name: string,
+  timezoneId: number,
+) {
   const res = await fetch("/api/admin/companies", {
     method: "POST",
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({
+      name,
+      timezoneId,
+    }),
   });
 
+  const data = await res.json().catch(() => ({}));
+
   if (!res.ok) {
-    throw new Error("Error al crear empresa");
+    throw new Error(
+      data.error || "Error al crear empresa",
+    );
   }
 
-  return res.json();
+  return data;
+}
+
+export async function fetchTimezones(): Promise<Timezone[]> {
+  const res = await fetch("/api/admin/timezones", {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const data = await res.json().catch(() => []);
+
+  if (!res.ok) {
+    throw new Error(
+      "Error al cargar zonas horarias",
+    );
+  }
+
+  return data;
 }
