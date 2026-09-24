@@ -19,6 +19,8 @@ jobs:
         ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
     - name: Deploy to VPS
+    # aqui cambiar:
+    # "/opt/restaurant-saas/current"
       run: |
         set -e
         COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}

@@ -13,14 +13,14 @@ export default function Header({ searchTerm, setSearchTerm, logout }: Props) {
       <div style={styles.logoContainer}>
         <div style={styles.logoBox}>
           <Image
-            src="/sandiasoft.png"
+            src="/hospiHost.png"
             alt="logo"
             style={{ borderRadius: 8 }}
             width={28}
             height={28}
           />
         </div>
-        <span style={styles.logoText}>Sandiasoft</span>
+        <span style={styles.logoText}>Hospi-host</span>
       </div>
 
       <input

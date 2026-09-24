@@ -14,13 +14,10 @@ export default function AdminCompanyPage() {
   const {
     company,
     users,
-    dashboard,
     loading,
     actionError,
     clearActionError,
     loadError,
-    activeTab,
-    setActiveTab,
     suspendConfirm,
     setSuspendConfirm,
     reactivateConfirm,
@@ -51,9 +48,6 @@ export default function AdminCompanyPage() {
 
       <CompanyTabs
         users={users}
-        dashboard={dashboard}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
         onCreateOwner={createOwner}
         onDeactivateUser={deactivateUser}
         onReactivateUser={reactivateUser}

@@ -1,4 +1,4 @@
-import { Company, CompanyDashboard, User } from "../types/admin";
+import { Company, User } from "../types/admin";
 
 export async function fetchMe(): Promise<User | null> {
   const res = await fetch("/api/admin/me", {
@@ -42,24 +42,4 @@ export async function createCompany(name: string) {
   }
 
   return res.json();
-}
-
-export async function fetchCompanyDashboard(
-  companyId: string
-): Promise<CompanyDashboard> {
-  const res = await fetch(
-    `/api/admin/companies/${companyId}/dashboard`,
-    {
-      method: "GET",
-      credentials: "include",
-    }
-  );
-
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    throw new Error("Error al cargar dashboard");
-  }
-
-  return data;
 }
