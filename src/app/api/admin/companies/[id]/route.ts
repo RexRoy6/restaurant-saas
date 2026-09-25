@@ -1,5 +1,5 @@
 import { db } from "@/db"
-import { companies } from "@/db/schema"
+import { companies, timezones } from "@/db/schema"
 import { requireAuth } from "@/lib/auth/requireAuth"
 import { eq } from "drizzle-orm"
 
@@ -39,9 +39,30 @@ export async function GET(
     }
 
     /* ---------- query ---------- */
-    const company = await db.query.companies.findFirst({
-      where: eq(companies.id, companyId),
-    })
+    const [company] = await db
+      .select({
+        id: companies.id,
+        name: companies.name,
+        slug: companies.slug,
+        currency: companies.currency,
+        timezoneId: companies.timezoneId,
+        createdAt: companies.createdAt,
+        updatedAt: companies.updatedAt,
+        deletedAt: companies.deletedAt,
+
+        timezone: {
+          id: timezones.id,
+          name: timezones.name,
+          label: timezones.label,
+        },
+      })
+      .from(companies)
+      .innerJoin(
+        timezones,
+        eq(companies.timezoneId, timezones.id),
+      )
+      .where(eq(companies.id, companyId))
+      .limit(1)
 
     if (!company) {
       return Response.json(
