@@ -200,9 +200,6 @@ export const checks = mysqlTable(
     ...baseColumns,
   },
   (table) => ({
-    companyIdx: index("checks_company_idx")
-      .on(table.companyId),
-
     companyStatusIdx: index(
       "checks_company_status_idx",
     ).on(
@@ -248,8 +245,6 @@ export const orders = mysqlTable(
     ...baseColumns,
   },
   (table) => ({
-    companyIdx: index("orders_company_idx")
-      .on(table.companyId),
 
     checkIdx: index("orders_check_idx")
       .on(table.checkId),
@@ -355,9 +350,6 @@ export const payments = mysqlTable(
     ...baseColumns,
   },
   (table) => ({
-    companyIdx: index(
-      "payments_company_idx",
-    ).on(table.companyId),
 
     checkIdx: index(
       "payments_check_idx",
