@@ -7,7 +7,9 @@ import {
   uniqueIndex,
   mysqlEnum,
   boolean,
+  check
 } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
 
 /* ---------- BASE COLUMNS (audit + soft delete) ---------- */
 
@@ -170,6 +172,11 @@ export const products = mysqlTable(
       table.companyId,
       table.sku,
     ),
+    priceNonNegative: check(
+  "products_price_non_negative",
+  sql`${table.priceInCents} >= 0`,
+),
+
   }),
 );
 //tabla de checks cuentas xd
@@ -314,6 +321,21 @@ export const orderItems = mysqlTable(
 
     productIdx: index("order_items_product_idx")
       .on(table.productId),
+
+      unitPriceNonNegative: check(
+  "order_items_unit_price_non_negative",
+  sql`${table.unitPriceInCents} >= 0`,
+),
+
+quantityPositive: check(
+  "order_items_quantity_positive",
+  sql`${table.quantity} > 0`,
+),
+
+subtotalNonNegative: check(
+  "order_items_subtotal_non_negative",
+  sql`${table.subtotalInCents} >= 0`,
+),
   }),
 );
 
@@ -361,6 +383,12 @@ export const payments = mysqlTable(
       table.companyId,
       table.paidAt,
     ),
+
+    amountPositive: check(
+  "payments_amount_positive",
+  sql`${table.amountInCents} > 0`,
+),
+
   }),
 );
 /* ---------- USERS ---------- */
