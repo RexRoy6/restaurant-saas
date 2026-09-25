@@ -381,9 +381,7 @@ export const users = mysqlTable(
       .autoincrement(),
 
     companyId: bigint("company_id", { mode: "number" })
-      .references(() => companies.id, {
-        onDelete: "cascade",
-      }),
+      .references(() => companies.id),
 
     role: mysqlEnum("role", USER_ROLES)
       .notNull(),
