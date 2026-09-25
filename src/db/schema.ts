@@ -262,6 +262,9 @@ export const orders = mysqlTable(
       table.companyId,
       table.status,
     ),
+    cancelledByIdx: index(
+  "orders_cancelled_by_idx",
+).on(table.cancelledBy),
   }),
 );
 
