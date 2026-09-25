@@ -405,8 +405,5 @@ export const users = mysqlTable(
   (table) => ({
     companyIdx: index("users_company_idx")
       .on(table.companyId),
-
-    emailIdx: index("users_email_idx")
-      .on(table.email),
   }),
 );
