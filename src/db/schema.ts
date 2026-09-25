@@ -31,6 +31,21 @@ export type UserRole = typeof USER_ROLES[number];
 
 export const userRoleEnum = mysqlEnum("user_role", USER_ROLES);
 
+export const CHECK_STATUSES = [
+  "OPEN",
+  "CLOSED",
+  "CANCELLED",
+] as const;
+
+export type CheckStatus =
+  typeof CHECK_STATUSES[number];
+
+export const checkStatusEnum = mysqlEnum(
+  "check_status",
+  CHECK_STATUSES,
+);
+
+
 /* ---------- catalogo de TIMEZONES ---------- */
 
 export const timezones = mysqlTable(
@@ -123,6 +138,45 @@ export const products = mysqlTable(
     ).on(
       table.companyId,
       table.sku,
+    ),
+  }),
+);
+//tabla de checks cuentas xd
+export const checks = mysqlTable(
+  "checks",
+  {
+    id: bigint("id", { mode: "number" })
+      .primaryKey()
+      .autoincrement(),
+
+    companyId: bigint("company_id", { mode: "number" })
+      .notNull()
+      .references(() => companies.id),
+
+    name: varchar("name", { length: 255 }),
+
+    note: varchar("note", { length: 500 }),
+
+    status: mysqlEnum(
+      "status",
+      CHECK_STATUSES,
+    )
+      .notNull()
+      .default("OPEN"),
+
+    closedAt: timestamp("closed_at"),
+
+    ...baseColumns,
+  },
+  (table) => ({
+    companyIdx: index("checks_company_idx")
+      .on(table.companyId),
+
+    companyStatusIdx: index(
+      "checks_company_status_idx",
+    ).on(
+      table.companyId,
+      table.status,
     ),
   }),
 );
