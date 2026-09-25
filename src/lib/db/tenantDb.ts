@@ -622,6 +622,11 @@ export async function tenantDb() {
       values: any,
       extraWhere?: any,
     ) {
+      if (!extraWhere) {
+  throw new Error(
+    "Update requires an explicit where condition.",
+  );
+}
       const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
@@ -652,6 +657,12 @@ export async function tenantDb() {
       table: AnyTable,
       extraWhere?: any,
     ) {
+      if (!extraWhere) {
+  throw new Error(
+    "Delete requires an explicit where condition.",
+  );
+}
+
       if (!table.deletedAt) {
         throw new Error(
           "Soft delete not supported on this table",
@@ -690,6 +701,11 @@ export async function tenantDb() {
         );
       }
 
+      if (!extraWhere) {
+    throw new Error(
+      "Force delete requires an explicit where condition.",
+    );
+  }
       return db
         .delete(table)
         .where(extraWhere);
