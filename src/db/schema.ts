@@ -163,8 +163,6 @@ export const products = mysqlTable(
     ...baseColumns,
   },
   (table) => ({
-    companyIdx: index("products_company_idx")
-      .on(table.companyId),
 
     companySkuUnique: uniqueIndex(
       "products_company_sku_unique",
@@ -176,6 +174,7 @@ export const products = mysqlTable(
   "products_price_non_negative",
   sql`${table.priceInCents} >= 0`,
 ),
+
 
   }),
 );
