@@ -3,9 +3,17 @@ import {
   isNull,
   count,
   sum,
+  eq
 } from "drizzle-orm";
 
 import { db } from "@/db";
+import {
+  products,
+  checks,
+  orders,
+  orderItems,
+  payments,
+} from "@/db/schema";
 import { requireAuth } from "@/lib/auth/requireAuth";
 
 /**
@@ -61,18 +69,24 @@ function buildTenantWhere(
     return undefined;
   }
 
-  /**
-   * Evita warnings por parámetros que todavía no tienen
-   * consumidores hasta registrar el nuevo dominio.
-   */
-  void table;
-  void companyId;
+  const tenantTables = [
+    products,
+    checks,
+    orders,
+    orderItems,
+    payments,
+  ];
 
-  /**
-   * FAIL CLOSED.
-   *
-   * Ninguna tabla nueva obtiene acceso automáticamente.
-   */
+  if (tenantTables.includes(table)) {
+    return table.companyId
+      ? eq(table.companyId, companyId)
+      : (() => {
+        throw new Error(
+          "Tenant table is missing companyId.",
+        );
+      })();
+  }
+
   throw new Error(
     "Tenant isolation is not configured for this table.",
   );
@@ -107,10 +121,118 @@ async function assertParentBelongsToTenant(
   if (isGlobalAdmin) {
     return;
   }
+  /**
+   * Product y Check no tienen un parent tenant
+   * adicional que validar.
+   */
+  if (
+    table === products ||
+    table === checks
+  ) {
+    return;
+  }
 
-  void table;
-  void values;
-  void companyId;
+  /**
+   * Order pertenece a un Check.
+   */
+  if (table === orders) {
+    const [parentCheck] = await db
+      .select({
+        id: checks.id,
+      })
+      .from(checks)
+      .where(
+        and(
+          eq(checks.id, values.checkId),
+          eq(checks.companyId, companyId),
+          isNull(checks.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!parentCheck) {
+      throw new Error(
+        "Check does not belong to current tenant.",
+      );
+    }
+
+    return;
+  }
+
+  /**
+   * OrderItem debe pertenecer a una Order y Product
+   * del mismo tenant.
+   */
+  if (table === orderItems) {
+    const [parentOrder] = await db
+      .select({
+        id: orders.id,
+      })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.id, values.orderId),
+          eq(orders.companyId, companyId),
+          isNull(orders.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!parentOrder) {
+      throw new Error(
+        "Order does not belong to current tenant.",
+      );
+    }
+
+    const [parentProduct] = await db
+      .select({
+        id: products.id,
+      })
+      .from(products)
+      .where(
+        and(
+          eq(products.id, values.productId),
+          eq(products.companyId, companyId),
+          isNull(products.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!parentProduct) {
+      throw new Error(
+        "Product does not belong to current tenant.",
+      );
+    }
+
+    return;
+  }
+
+  /**
+   * Payment pertenece a un Check.
+   */
+  if (table === payments) {
+    const [parentCheck] = await db
+      .select({
+        id: checks.id,
+      })
+      .from(checks)
+      .where(
+        and(
+          eq(checks.id, values.checkId),
+          eq(checks.companyId, companyId),
+          isNull(checks.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!parentCheck) {
+      throw new Error(
+        "Check does not belong to current tenant.",
+      );
+    }
+
+    return;
+  }
 
   /**
    * FAIL CLOSED.
@@ -118,6 +240,7 @@ async function assertParentBelongsToTenant(
   throw new Error(
     "Tenant insert isolation is not configured for this table.",
   );
+
 }
 
 /**
@@ -396,6 +519,8 @@ export async function tenantDb() {
           .values(values);
       }
 
+
+
       /**
        * FAIL CLOSED.
        *
@@ -403,6 +528,23 @@ export async function tenantDb() {
        * cuáles reciben companyId automáticamente y cuáles
        * requieren validación mediante su parent.
        */
+      const tenantTables = [
+        products,
+        checks,
+        orders,
+        orderItems,
+        payments,
+      ];
+
+      if (tenantTables.includes(table)) {
+        return db
+          .insert(table)
+          .values({
+            ...values,
+            companyId: currentCompanyId,
+          });
+      }
+
       throw new Error(
         "Tenant insert isolation is not configured for this table.",
       );
