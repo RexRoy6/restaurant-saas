@@ -49,5 +49,14 @@ export const RBAC_CONFIG: RbacRoute[] = [
   methods: {
     PATCH: ["admin", "owner"]
   }
-}
+},
+   {
+    pattern: "/api/products.*",
+    methods: {
+      GET: ["owner"],
+      POST: ["owner"],
+      PATCH: ["owner"],
+      DELETE: ["owner"]
+    }
+  },
 ]
