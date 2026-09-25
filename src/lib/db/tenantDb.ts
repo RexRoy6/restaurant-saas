@@ -3,9 +3,19 @@ import {
   isNull,
   count,
   sum,
+  eq,
+  SQL,
+  AnyColumn
 } from "drizzle-orm";
 
 import { db } from "@/db";
+import {
+  products,
+  checks,
+  orders,
+  orderItems,
+  payments,
+} from "@/db/schema";
 import { requireAuth } from "@/lib/auth/requireAuth";
 
 /**
@@ -34,7 +44,14 @@ import { requireAuth } from "@/lib/auth/requireAuth";
  * ============================================================
  */
 
-type AnyTable = any;
+type TenantTable =
+  | typeof products
+  | typeof checks
+  | typeof orders
+  | typeof orderItems
+  | typeof payments;
+
+type TenantValues = Record<string, unknown>;
 
 /**
  * ============================================================
@@ -50,7 +67,7 @@ type AnyTable = any;
  * cada una deberá configurarse explícitamente aquí.
  */
 function buildTenantWhere(
-  table: AnyTable,
+  table: TenantTable,
   companyId: number,
   isGlobalAdmin: boolean,
 ) {
@@ -61,23 +78,48 @@ function buildTenantWhere(
     return undefined;
   }
 
-  /**
-   * Evita warnings por parámetros que todavía no tienen
-   * consumidores hasta registrar el nuevo dominio.
-   */
-  void table;
-  void companyId;
+  const tenantTables = [
+    products,
+    checks,
+    orders,
+    orderItems,
+    payments,
+  ];
 
-  /**
-   * FAIL CLOSED.
-   *
-   * Ninguna tabla nueva obtiene acceso automáticamente.
-   */
+  if (tenantTables.includes(table)) {
+    return table.companyId
+      ? eq(table.companyId, companyId)
+      : (() => {
+        throw new Error(
+          "Tenant table is missing companyId.",
+        );
+      })();
+  }
+
   throw new Error(
     "Tenant isolation is not configured for this table.",
   );
 }
 
+
+function requireNumericId(
+  values: TenantValues,
+  key: string,
+): number {
+  const value = values[key];
+
+  if (
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    value <= 0
+  ) {
+    throw new Error(
+      `${key} must be a positive integer.`,
+    );
+  }
+
+  return value;
+}
 /**
  * ============================================================
  * PARENT OWNERSHIP VALIDATION
@@ -96,8 +138,8 @@ function buildTenantWhere(
  * sus validaciones deberán configurarse explícitamente aquí.
  */
 async function assertParentBelongsToTenant(
-  table: AnyTable,
-  values: any,
+  table: TenantTable,
+  values: TenantValues,
   companyId: number,
   isGlobalAdmin: boolean,
 ) {
@@ -107,10 +149,143 @@ async function assertParentBelongsToTenant(
   if (isGlobalAdmin) {
     return;
   }
+  /**
+   * Product y Check no tienen un parent tenant
+   * adicional que validar.
+   */
+  if (
+    table === products ||
+    table === checks
+  ) {
+    return;
+  }
 
-  void table;
-  void values;
-  void companyId;
+  /**
+   * Order pertenece a un Check.
+   */
+  if (table === orders) {
+
+    const checkId = requireNumericId(
+      values,
+      "checkId",
+    );
+
+    const [parentCheck] = await db
+      .select({
+        id: checks.id,
+      })
+      .from(checks)
+      .where(
+        and(
+          eq(checks.id, checkId),
+          eq(checks.companyId, companyId),
+          isNull(checks.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!parentCheck) {
+      throw new Error(
+        "Check does not belong to current tenant.",
+      );
+    }
+
+    return;
+  }
+
+
+
+  if (table === orderItems) {
+
+    /**
+ * OrderItem debe pertenecer a una Order y Product
+ * del mismo tenant.
+ */
+    const orderId = requireNumericId(
+      values,
+      "orderId",
+    );
+
+    const productId = requireNumericId(
+      values,
+      "productId",
+    );
+
+    const [parentOrder] = await db
+      .select({
+        id: orders.id,
+      })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.id, orderId),
+          eq(orders.companyId, companyId),
+          isNull(orders.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!parentOrder) {
+      throw new Error(
+        "Order does not belong to current tenant.",
+      );
+    }
+
+    const [parentProduct] = await db
+      .select({
+        id: products.id,
+      })
+      .from(products)
+      .where(
+        and(
+          eq(products.id, productId),
+          eq(products.companyId, companyId),
+          isNull(products.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!parentProduct) {
+      throw new Error(
+        "Product does not belong to current tenant.",
+      );
+    }
+
+    return;
+  }
+
+  /**
+   * Payment pertenece a un Check.
+   */
+  if (table === payments) {
+
+    const checkId = requireNumericId(
+      values,
+      "checkId",
+    );
+
+    const [parentCheck] = await db
+      .select({
+        id: checks.id,
+      })
+      .from(checks)
+      .where(
+        and(
+          eq(checks.id, checkId),
+          eq(checks.companyId, companyId),
+          isNull(checks.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!parentCheck) {
+      throw new Error(
+        "Check does not belong to current tenant.",
+      );
+    }
+
+    return;
+  }
 
   /**
    * FAIL CLOSED.
@@ -118,6 +293,69 @@ async function assertParentBelongsToTenant(
   throw new Error(
     "Tenant insert isolation is not configured for this table.",
   );
+
+}
+
+function sanitizeTenantUpdate(
+  table: TenantTable,
+  values: TenantValues,
+  isGlobalAdmin: boolean,
+) {
+  if (isGlobalAdmin) {
+    return values;
+  }
+
+  const tenantTables = [
+    products,
+    checks,
+    orders,
+    orderItems,
+    payments,
+  ];
+
+  if (!tenantTables.includes(table)) {
+    throw new Error(
+      "Tenant update isolation is not configured for this table.",
+    );
+  }
+
+  if ("companyId" in values) {
+    throw new Error(
+      "companyId cannot be changed through tenantDb.",
+    );
+  }
+
+  if (
+    table === orders &&
+    "checkId" in values
+  ) {
+    throw new Error(
+      "Order checkId cannot be changed.",
+    );
+  }
+
+  if (
+    table === orderItems &&
+    (
+      "orderId" in values ||
+      "productId" in values
+    )
+  ) {
+    throw new Error(
+      "OrderItem parent relationships cannot be changed.",
+    );
+  }
+
+  if (
+    table === payments &&
+    "checkId" in values
+  ) {
+    throw new Error(
+      "Payment checkId cannot be changed.",
+    );
+  }
+
+  return values;
 }
 
 /**
@@ -156,8 +394,8 @@ export async function tenantDb() {
    * ==========================================================
    */
   function buildWhere(
-    table: AnyTable,
-    extraWhere?: any,
+    table: TenantTable,
+    extraWhere?: SQL,
   ) {
     /**
      * El admin global no necesita tenant filter.
@@ -190,8 +428,8 @@ export async function tenantDb() {
      * ========================================================
      */
     async count(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
       const baseWhere = isNull(table.deletedAt);
 
@@ -218,9 +456,9 @@ export async function tenantDb() {
      * ========================================================
      */
     async sum(
-      table: AnyTable,
-      column: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      column: AnyColumn,
+      extraWhere?: SQL,
     ) {
       const baseWhere = isNull(table.deletedAt);
 
@@ -247,8 +485,8 @@ export async function tenantDb() {
      * ========================================================
      */
     async exists(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
       const baseWhere = isNull(table.deletedAt);
 
@@ -276,8 +514,8 @@ export async function tenantDb() {
      * ========================================================
      */
     findMany(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
       const baseWhere = isNull(table.deletedAt);
 
@@ -303,8 +541,8 @@ export async function tenantDb() {
      * tenant isolation.
      */
     findManyRaw(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
       return db
         .select()
@@ -323,8 +561,8 @@ export async function tenantDb() {
      * ========================================================
      */
     findFirst(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
       const baseWhere = isNull(table.deletedAt);
 
@@ -351,8 +589,8 @@ export async function tenantDb() {
      * ========================================================
      */
     findFirstRaw(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
       return db
         .select()
@@ -374,9 +612,27 @@ export async function tenantDb() {
      * INSERT
      * ========================================================
      */
+
+
+    // const checkId = requireNumericId(
+    //     values,
+    //     "checkId",
+    //   );
+
+    //   const [parentCheck] = await db
+    //     .select({
+    //       id: checks.id,
+    //     })
+    //     .from(checks)
+    //     .where(
+    //       and(
+    //         eq(checks.id, checkId),
+
+
+
     async insert(
-      table: AnyTable,
-      values: any,
+      table: TenantTable,
+      values: TenantValues,
     ) {
       await assertParentBelongsToTenant(
         table,
@@ -385,24 +641,53 @@ export async function tenantDb() {
         isGlobalAdmin,
       );
 
-      /**
-       * Global admin.
-       *
-       * No asumimos automáticamente que una tabla tenga companyId.
-       */
-      if (isGlobalAdmin) {
+      const insertValues = isGlobalAdmin
+        ? values
+        : {
+          ...values,
+          companyId: currentCompanyId,
+        };
+
+      if (table === products) {
         return db
-          .insert(table)
-          .values(values);
+          .insert(products)
+          .values(
+            insertValues as typeof products.$inferInsert,
+          );
       }
 
-      /**
-       * FAIL CLOSED.
-       *
-       * Cuando registremos las nuevas tablas decidiremos aquí
-       * cuáles reciben companyId automáticamente y cuáles
-       * requieren validación mediante su parent.
-       */
+      if (table === checks) {
+        return db
+          .insert(checks)
+          .values(
+            insertValues as typeof checks.$inferInsert,
+          );
+      }
+
+      if (table === orders) {
+        return db
+          .insert(orders)
+          .values(
+            insertValues as typeof orders.$inferInsert,
+          );
+      }
+
+      if (table === orderItems) {
+        return db
+          .insert(orderItems)
+          .values(
+            insertValues as typeof orderItems.$inferInsert,
+          );
+      }
+
+      if (table === payments) {
+        return db
+          .insert(payments)
+          .values(
+            insertValues as typeof payments.$inferInsert,
+          );
+      }
+
       throw new Error(
         "Tenant insert isolation is not configured for this table.",
       );
@@ -414,10 +699,15 @@ export async function tenantDb() {
      * ========================================================
      */
     update(
-      table: AnyTable,
-      values: any,
-      extraWhere?: any,
+      table: TenantTable,
+      values: TenantValues,
+      extraWhere?: SQL,
     ) {
+      if (!extraWhere) {
+        throw new Error(
+          "Update requires an explicit where condition.",
+        );
+      }
       const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
@@ -427,9 +717,15 @@ export async function tenantDb() {
           : baseWhere,
       );
 
+      const safeValues = sanitizeTenantUpdate(
+        table,
+        values,
+        isGlobalAdmin,
+      );
+
       return db
         .update(table)
-        .set(values)
+        .set(safeValues)
         .where(where);
     },
 
@@ -439,9 +735,15 @@ export async function tenantDb() {
      * ========================================================
      */
     delete(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
+      if (!extraWhere) {
+        throw new Error(
+          "Delete requires an explicit where condition.",
+        );
+      }
+
       if (!table.deletedAt) {
         throw new Error(
           "Soft delete not supported on this table",
@@ -471,8 +773,8 @@ export async function tenantDb() {
      * ========================================================
      */
     forceDelete(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
       if (!isGlobalAdmin) {
         throw new Error(
@@ -480,6 +782,11 @@ export async function tenantDb() {
         );
       }
 
+      if (!extraWhere) {
+        throw new Error(
+          "Force delete requires an explicit where condition.",
+        );
+      }
       return db
         .delete(table)
         .where(extraWhere);

@@ -7,13 +7,15 @@ import {
   uniqueIndex,
   mysqlEnum,
   boolean,
+  check
 } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
 
 /* ---------- BASE COLUMNS (audit + soft delete) ---------- */
 
 const baseColumns = {
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
   deletedAt: timestamp("deleted_at"),
 };
 
@@ -161,8 +163,6 @@ export const products = mysqlTable(
     ...baseColumns,
   },
   (table) => ({
-    companyIdx: index("products_company_idx")
-      .on(table.companyId),
 
     companySkuUnique: uniqueIndex(
       "products_company_sku_unique",
@@ -170,6 +170,12 @@ export const products = mysqlTable(
       table.companyId,
       table.sku,
     ),
+    priceNonNegative: check(
+  "products_price_non_negative",
+  sql`${table.priceInCents} >= 0`,
+),
+
+
   }),
 );
 //tabla de checks cuentas xd
@@ -200,9 +206,6 @@ export const checks = mysqlTable(
     ...baseColumns,
   },
   (table) => ({
-    companyIdx: index("checks_company_idx")
-      .on(table.companyId),
-
     companyStatusIdx: index(
       "checks_company_status_idx",
     ).on(
@@ -248,8 +251,6 @@ export const orders = mysqlTable(
     ...baseColumns,
   },
   (table) => ({
-    companyIdx: index("orders_company_idx")
-      .on(table.companyId),
 
     checkIdx: index("orders_check_idx")
       .on(table.checkId),
@@ -260,6 +261,9 @@ export const orders = mysqlTable(
       table.companyId,
       table.status,
     ),
+    cancelledByIdx: index(
+  "orders_cancelled_by_idx",
+).on(table.cancelledBy),
   }),
 );
 
@@ -319,6 +323,21 @@ export const orderItems = mysqlTable(
 
     productIdx: index("order_items_product_idx")
       .on(table.productId),
+
+      unitPriceNonNegative: check(
+  "order_items_unit_price_non_negative",
+  sql`${table.unitPriceInCents} >= 0`,
+),
+
+quantityPositive: check(
+  "order_items_quantity_positive",
+  sql`${table.quantity} > 0`,
+),
+
+subtotalNonNegative: check(
+  "order_items_subtotal_non_negative",
+  sql`${table.subtotalInCents} >= 0`,
+),
   }),
 );
 
@@ -355,9 +374,6 @@ export const payments = mysqlTable(
     ...baseColumns,
   },
   (table) => ({
-    companyIdx: index(
-      "payments_company_idx",
-    ).on(table.companyId),
 
     checkIdx: index(
       "payments_check_idx",
@@ -369,6 +385,12 @@ export const payments = mysqlTable(
       table.companyId,
       table.paidAt,
     ),
+
+    amountPositive: check(
+  "payments_amount_positive",
+  sql`${table.amountInCents} > 0`,
+),
+
   }),
 );
 /* ---------- USERS ---------- */
@@ -381,9 +403,7 @@ export const users = mysqlTable(
       .autoincrement(),
 
     companyId: bigint("company_id", { mode: "number" })
-      .references(() => companies.id, {
-        onDelete: "cascade",
-      }),
+      .references(() => companies.id),
 
     role: mysqlEnum("role", USER_ROLES)
       .notNull(),
@@ -405,8 +425,5 @@ export const users = mysqlTable(
   (table) => ({
     companyIdx: index("users_company_idx")
       .on(table.companyId),
-
-    emailIdx: index("users_email_idx")
-      .on(table.email),
   }),
 );
