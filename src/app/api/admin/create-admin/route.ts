@@ -5,7 +5,6 @@ import { requireAuth } from "@/lib/auth/requireAuth"
 import { eq } from "drizzle-orm"
 
 export async function POST(req: Request) {
-  const auth = await requireAuth()
   try {
     const { email, password } = await req.json()
 
@@ -51,26 +50,35 @@ export async function POST(req: Request) {
       where: eq(users.role, "admin")
     })
 
-    /*
-      ⭐ BOOTSTRAP MODE
-      If no admin exists → require bootstrap secret
-    */
+    /* ---------- authorization ---------- */
+
     if (!existingAdmin) {
+      /*
+       * BOOTSTRAP MODE
+       *
+       * No admin exists yet.
+       * Allow creation using ADMIN_BOOTSTRAP_SECRET.
+       */
+
       const bootstrapSecret = req.headers.get("x-bootstrap-secret")
 
-      if (bootstrapSecret !== process.env.ADMIN_BOOTSTRAP_SECRET) {
+      if (
+        !process.env.ADMIN_BOOTSTRAP_SECRET ||
+        bootstrapSecret !== process.env.ADMIN_BOOTSTRAP_SECRET
+      ) {
         return Response.json(
           { error: "invalid bootstrap secret" },
           { status: 403 }
         )
       }
-    }
+    } else {
+      /*
+       * NORMAL MODE
+       *
+       * At least one admin exists.
+       * Only an authenticated admin can create another admin.
+       */
 
-    /*
-      ⭐ NORMAL MODE
-      If admin exists → must be authenticated admin
-    */
-    if (existingAdmin) {
       try {
         await requireAuth({ roles: ["admin"] })
       } catch {
@@ -85,7 +93,8 @@ export async function POST(req: Request) {
 
     const passwordHash = await hashPassword(password)
 
-    const [admin] = await db.insert(users)
+    const [admin] = await db
+      .insert(users)
       .values({
         email,
         passwordHash,
@@ -94,13 +103,15 @@ export async function POST(req: Request) {
       })
       .$returningId()
 
-    return Response.json({
-      message: existingAdmin
-        ? "Admin created"
-        : "First admin created",
-      admin
-    })
-
+    return Response.json(
+      {
+        message: existingAdmin
+          ? "Admin created"
+          : "First admin created",
+        admin
+      },
+      { status: 201 }
+    )
   } catch (error) {
     console.error("create-admin error:", error)
 
