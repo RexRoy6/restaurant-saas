@@ -243,6 +243,68 @@ async function assertParentBelongsToTenant(
 
 }
 
+function sanitizeTenantUpdate(
+  table: AnyTable,
+  values: any,
+  isGlobalAdmin: boolean,
+) {
+  if (isGlobalAdmin) {
+    return values;
+  }
+
+  const tenantTables = [
+    products,
+    checks,
+    orders,
+    orderItems,
+    payments,
+  ];
+
+  if (!tenantTables.includes(table)) {
+    throw new Error(
+      "Tenant update isolation is not configured for this table.",
+    );
+  }
+
+  if ("companyId" in values) {
+    throw new Error(
+      "companyId cannot be changed through tenantDb.",
+    );
+  }
+
+  if (
+    table === orders &&
+    "checkId" in values
+  ) {
+    throw new Error(
+      "Order checkId cannot be changed.",
+    );
+  }
+
+  if (
+    table === orderItems &&
+    (
+      "orderId" in values ||
+      "productId" in values
+    )
+  ) {
+    throw new Error(
+      "OrderItem parent relationships cannot be changed.",
+    );
+  }
+
+  if (
+    table === payments &&
+    "checkId" in values
+  ) {
+    throw new Error(
+      "Payment checkId cannot be changed.",
+    );
+  }
+
+  return values;
+}
+
 /**
  * ============================================================
  * TENANT DB
@@ -569,9 +631,15 @@ export async function tenantDb() {
           : baseWhere,
       );
 
+      const safeValues = sanitizeTenantUpdate(
+        table,
+        values,
+        isGlobalAdmin,
+      );
+
       return db
         .update(table)
-        .set(values)
+        .set(safeValues)
         .where(where);
     },
 
