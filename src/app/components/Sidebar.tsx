@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home, Users, Calendar, FileText, CreditCard,
+  Home,Package, Users, Calendar, FileText, CreditCard,
   Briefcase, AlarmClock, Settings, Star,
   ChevronLeft, ChevronRight
 } from "lucide-react";
@@ -11,8 +11,21 @@ import { UserRole } from "@/db/schema";
 import { canAccessRoute } from "@/lib/auth/canAccessRoute";
 
 const menu = [
-  { label: "Inicio", href: "/company", icon: Home },
-  { label: "Configuración", href: "/company/settings", icon: Settings },
+  {
+    label: "Inicio",
+    href: "/company",
+    icon: Home,
+  },
+  {
+    label: "Productos",
+    href: "/company/products",
+    icon: Package,
+  },
+  {
+    label: "Configuración",
+    href: "/company/settings",
+    icon: Settings,
+  },
 ];
 
 export default function Sidebar({ 
