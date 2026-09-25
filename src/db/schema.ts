@@ -31,6 +31,7 @@ export type UserRole = typeof USER_ROLES[number];
 
 export const userRoleEnum = mysqlEnum("user_role", USER_ROLES);
 
+// enums generales pa todo
 export const CHECK_STATUSES = [
   "OPEN",
   "CLOSED",
@@ -62,6 +63,19 @@ export const checkStatusEnum = mysqlEnum(
   CHECK_STATUSES,
 );
 
+export const PAYMENT_METHODS = [
+  "CASH",
+  "CARD",
+  "TRANSFER",
+] as const;
+
+export type PaymentMethod =
+  typeof PAYMENT_METHODS[number];
+
+export const paymentMethodEnum = mysqlEnum(
+  "payment_method",
+  PAYMENT_METHODS,
+);
 
 /* ---------- catalogo de TIMEZONES ---------- */
 
@@ -305,6 +319,56 @@ export const orderItems = mysqlTable(
 
     productIdx: index("order_items_product_idx")
       .on(table.productId),
+  }),
+);
+
+//payments
+export const payments = mysqlTable(
+  "payments",
+  {
+    id: bigint("id", { mode: "number" })
+      .primaryKey()
+      .autoincrement(),
+
+    companyId: bigint("company_id", { mode: "number" })
+      .notNull()
+      .references(() => companies.id),
+
+    checkId: bigint("check_id", { mode: "number" })
+      .notNull()
+      .references(() => checks.id),
+
+    amountInCents: bigint(
+      "amount_in_cents",
+      { mode: "number" },
+    ).notNull(),
+
+    paymentMethod: mysqlEnum(
+      "payment_method",
+      PAYMENT_METHODS,
+    ).notNull(),
+
+    paidAt: timestamp("paid_at")
+      .defaultNow()
+      .notNull(),
+
+    ...baseColumns,
+  },
+  (table) => ({
+    companyIdx: index(
+      "payments_company_idx",
+    ).on(table.companyId),
+
+    checkIdx: index(
+      "payments_check_idx",
+    ).on(table.checkId),
+
+    companyPaidAtIdx: index(
+      "payments_company_paid_at_idx",
+    ).on(
+      table.companyId,
+      table.paidAt,
+    ),
   }),
 );
 /* ---------- USERS ---------- */
