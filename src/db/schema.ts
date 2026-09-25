@@ -37,6 +37,23 @@ export const CHECK_STATUSES = [
   "CANCELLED",
 ] as const;
 
+export const ORDER_STATUSES = [
+  "PENDING",
+  "PREPARING",
+  "READY",
+  "DELIVERED",
+  "CANCELLED",
+] as const;
+
+export type OrderStatus =
+  typeof ORDER_STATUSES[number];
+
+export const orderStatusEnum = mysqlEnum(
+  "order_status",
+  ORDER_STATUSES,
+);
+
+
 export type CheckStatus =
   typeof CHECK_STATUSES[number];
 
@@ -178,6 +195,116 @@ export const checks = mysqlTable(
       table.companyId,
       table.status,
     ),
+  }),
+);
+//ordenes/tickets
+export const orders = mysqlTable(
+  "orders",
+  {
+    id: bigint("id", { mode: "number" })
+      .primaryKey()
+      .autoincrement(),
+
+    companyId: bigint("company_id", { mode: "number" })
+      .notNull()
+      .references(() => companies.id),
+
+    checkId: bigint("check_id", { mode: "number" })
+      .notNull()
+      .references(() => checks.id),
+
+    status: mysqlEnum(
+      "status",
+      ORDER_STATUSES,
+    )
+      .notNull()
+      .default("PENDING"),
+
+    cancelledAt: timestamp("cancelled_at"),
+
+    cancelledBy: bigint("cancelled_by", {
+      mode: "number",
+    }).references(() => users.id),
+
+    cancellationReason: varchar(
+      "cancellation_reason",
+      { length: 500 },
+    ),
+
+    ...baseColumns,
+  },
+  (table) => ({
+    companyIdx: index("orders_company_idx")
+      .on(table.companyId),
+
+    checkIdx: index("orders_check_idx")
+      .on(table.checkId),
+
+    companyStatusIdx: index(
+      "orders_company_status_idx",
+    ).on(
+      table.companyId,
+      table.status,
+    ),
+  }),
+);
+
+export const orderItems = mysqlTable(
+  "order_items",
+  {
+    id: bigint("id", { mode: "number" })
+      .primaryKey()
+      .autoincrement(),
+
+    companyId: bigint("company_id", { mode: "number" })
+      .notNull()
+      .references(() => companies.id),
+
+    orderId: bigint("order_id", { mode: "number" })
+      .notNull()
+      .references(() => orders.id),
+
+    productId: bigint("product_id", { mode: "number" })
+      .notNull()
+      .references(() => products.id),
+
+    /*
+     * Historical snapshot.
+     * These values must not change when the Product changes.
+     */
+    productName: varchar("product_name", {
+      length: 255,
+    }).notNull(),
+
+    sku: varchar("sku", {
+      length: 100,
+    }).notNull(),
+
+    unitPriceInCents: bigint(
+      "unit_price_in_cents",
+      { mode: "number" },
+    ).notNull(),
+
+    quantity: bigint("quantity", {
+      mode: "number",
+    }).notNull(),
+
+    subtotalInCents: bigint(
+      "subtotal_in_cents",
+      { mode: "number" },
+    ).notNull(),
+
+    ...baseColumns,
+  },
+  (table) => ({
+    companyIdx: index("order_items_company_idx")
+      .on(table.companyId),
+
+    orderIdx: index("order_items_order_idx")
+      .on(table.orderId),
+
+    productIdx: index("order_items_product_idx")
+      .on(table.productId),
   }),
 );
 /* ---------- USERS ---------- */
