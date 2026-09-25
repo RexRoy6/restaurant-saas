@@ -3,7 +3,9 @@ import {
   isNull,
   count,
   sum,
-  eq
+  eq,
+  SQL,
+  AnyColumn
 } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -42,7 +44,14 @@ import { requireAuth } from "@/lib/auth/requireAuth";
  * ============================================================
  */
 
-type AnyTable = any;
+type TenantTable =
+  | typeof products
+  | typeof checks
+  | typeof orders
+  | typeof orderItems
+  | typeof payments;
+
+type TenantValues = Record<string, unknown>;
 
 /**
  * ============================================================
@@ -58,7 +67,7 @@ type AnyTable = any;
  * cada una deberá configurarse explícitamente aquí.
  */
 function buildTenantWhere(
-  table: AnyTable,
+  table: TenantTable,
   companyId: number,
   isGlobalAdmin: boolean,
 ) {
@@ -92,6 +101,25 @@ function buildTenantWhere(
   );
 }
 
+
+function requireNumericId(
+  values: TenantValues,
+  key: string,
+): number {
+  const value = values[key];
+
+  if (
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    value <= 0
+  ) {
+    throw new Error(
+      `${key} must be a positive integer.`,
+    );
+  }
+
+  return value;
+}
 /**
  * ============================================================
  * PARENT OWNERSHIP VALIDATION
@@ -110,8 +138,8 @@ function buildTenantWhere(
  * sus validaciones deberán configurarse explícitamente aquí.
  */
 async function assertParentBelongsToTenant(
-  table: AnyTable,
-  values: any,
+  table: TenantTable,
+  values: TenantValues,
   companyId: number,
   isGlobalAdmin: boolean,
 ) {
@@ -136,6 +164,12 @@ async function assertParentBelongsToTenant(
    * Order pertenece a un Check.
    */
   if (table === orders) {
+
+    const checkId = requireNumericId(
+      values,
+      "checkId",
+    );
+
     const [parentCheck] = await db
       .select({
         id: checks.id,
@@ -143,7 +177,7 @@ async function assertParentBelongsToTenant(
       .from(checks)
       .where(
         and(
-          eq(checks.id, values.checkId),
+          eq(checks.id, checkId),
           eq(checks.companyId, companyId),
           isNull(checks.deletedAt),
         ),
@@ -159,11 +193,24 @@ async function assertParentBelongsToTenant(
     return;
   }
 
-  /**
-   * OrderItem debe pertenecer a una Order y Product
-   * del mismo tenant.
-   */
+
+
   if (table === orderItems) {
+
+    /**
+ * OrderItem debe pertenecer a una Order y Product
+ * del mismo tenant.
+ */
+    const orderId = requireNumericId(
+      values,
+      "orderId",
+    );
+
+    const productId = requireNumericId(
+      values,
+      "productId",
+    );
+
     const [parentOrder] = await db
       .select({
         id: orders.id,
@@ -171,7 +218,7 @@ async function assertParentBelongsToTenant(
       .from(orders)
       .where(
         and(
-          eq(orders.id, values.orderId),
+          eq(orders.id, orderId),
           eq(orders.companyId, companyId),
           isNull(orders.deletedAt),
         ),
@@ -191,7 +238,7 @@ async function assertParentBelongsToTenant(
       .from(products)
       .where(
         and(
-          eq(products.id, values.productId),
+          eq(products.id, productId),
           eq(products.companyId, companyId),
           isNull(products.deletedAt),
         ),
@@ -211,6 +258,12 @@ async function assertParentBelongsToTenant(
    * Payment pertenece a un Check.
    */
   if (table === payments) {
+
+    const checkId = requireNumericId(
+      values,
+      "checkId",
+    );
+
     const [parentCheck] = await db
       .select({
         id: checks.id,
@@ -218,7 +271,7 @@ async function assertParentBelongsToTenant(
       .from(checks)
       .where(
         and(
-          eq(checks.id, values.checkId),
+          eq(checks.id, checkId),
           eq(checks.companyId, companyId),
           isNull(checks.deletedAt),
         ),
@@ -244,8 +297,8 @@ async function assertParentBelongsToTenant(
 }
 
 function sanitizeTenantUpdate(
-  table: AnyTable,
-  values: any,
+  table: TenantTable,
+  values: TenantValues,
   isGlobalAdmin: boolean,
 ) {
   if (isGlobalAdmin) {
@@ -341,8 +394,8 @@ export async function tenantDb() {
    * ==========================================================
    */
   function buildWhere(
-    table: AnyTable,
-    extraWhere?: any,
+    table: TenantTable,
+    extraWhere?: SQL,
   ) {
     /**
      * El admin global no necesita tenant filter.
@@ -375,8 +428,8 @@ export async function tenantDb() {
      * ========================================================
      */
     async count(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
       const baseWhere = isNull(table.deletedAt);
 
@@ -403,9 +456,9 @@ export async function tenantDb() {
      * ========================================================
      */
     async sum(
-      table: AnyTable,
-      column: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      column: AnyColumn,
+      extraWhere?: SQL,
     ) {
       const baseWhere = isNull(table.deletedAt);
 
@@ -432,8 +485,8 @@ export async function tenantDb() {
      * ========================================================
      */
     async exists(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
       const baseWhere = isNull(table.deletedAt);
 
@@ -461,8 +514,8 @@ export async function tenantDb() {
      * ========================================================
      */
     findMany(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
       const baseWhere = isNull(table.deletedAt);
 
@@ -488,8 +541,8 @@ export async function tenantDb() {
      * tenant isolation.
      */
     findManyRaw(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
       return db
         .select()
@@ -508,8 +561,8 @@ export async function tenantDb() {
      * ========================================================
      */
     findFirst(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
       const baseWhere = isNull(table.deletedAt);
 
@@ -536,8 +589,8 @@ export async function tenantDb() {
      * ========================================================
      */
     findFirstRaw(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
       return db
         .select()
@@ -559,9 +612,27 @@ export async function tenantDb() {
      * INSERT
      * ========================================================
      */
+
+
+    // const checkId = requireNumericId(
+    //     values,
+    //     "checkId",
+    //   );
+
+    //   const [parentCheck] = await db
+    //     .select({
+    //       id: checks.id,
+    //     })
+    //     .from(checks)
+    //     .where(
+    //       and(
+    //         eq(checks.id, checkId),
+
+
+
     async insert(
-      table: AnyTable,
-      values: any,
+      table: TenantTable,
+      values: TenantValues,
     ) {
       await assertParentBelongsToTenant(
         table,
@@ -570,41 +641,51 @@ export async function tenantDb() {
         isGlobalAdmin,
       );
 
-      /**
-       * Global admin.
-       *
-       * No asumimos automáticamente que una tabla tenga companyId.
-       */
-      if (isGlobalAdmin) {
+      const insertValues = isGlobalAdmin
+        ? values
+        : {
+          ...values,
+          companyId: currentCompanyId,
+        };
+
+      if (table === products) {
         return db
-          .insert(table)
-          .values(values);
+          .insert(products)
+          .values(
+            insertValues as typeof products.$inferInsert,
+          );
       }
 
-
-
-      /**
-       * FAIL CLOSED.
-       *
-       * Cuando registremos las nuevas tablas decidiremos aquí
-       * cuáles reciben companyId automáticamente y cuáles
-       * requieren validación mediante su parent.
-       */
-      const tenantTables = [
-        products,
-        checks,
-        orders,
-        orderItems,
-        payments,
-      ];
-
-      if (tenantTables.includes(table)) {
+      if (table === checks) {
         return db
-          .insert(table)
-          .values({
-            ...values,
-            companyId: currentCompanyId,
-          });
+          .insert(checks)
+          .values(
+            insertValues as typeof checks.$inferInsert,
+          );
+      }
+
+      if (table === orders) {
+        return db
+          .insert(orders)
+          .values(
+            insertValues as typeof orders.$inferInsert,
+          );
+      }
+
+      if (table === orderItems) {
+        return db
+          .insert(orderItems)
+          .values(
+            insertValues as typeof orderItems.$inferInsert,
+          );
+      }
+
+      if (table === payments) {
+        return db
+          .insert(payments)
+          .values(
+            insertValues as typeof payments.$inferInsert,
+          );
       }
 
       throw new Error(
@@ -618,15 +699,15 @@ export async function tenantDb() {
      * ========================================================
      */
     update(
-      table: AnyTable,
-      values: any,
-      extraWhere?: any,
+      table: TenantTable,
+      values: TenantValues,
+      extraWhere?: SQL,
     ) {
       if (!extraWhere) {
-  throw new Error(
-    "Update requires an explicit where condition.",
-  );
-}
+        throw new Error(
+          "Update requires an explicit where condition.",
+        );
+      }
       const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
@@ -654,14 +735,14 @@ export async function tenantDb() {
      * ========================================================
      */
     delete(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
       if (!extraWhere) {
-  throw new Error(
-    "Delete requires an explicit where condition.",
-  );
-}
+        throw new Error(
+          "Delete requires an explicit where condition.",
+        );
+      }
 
       if (!table.deletedAt) {
         throw new Error(
@@ -692,8 +773,8 @@ export async function tenantDb() {
      * ========================================================
      */
     forceDelete(
-      table: AnyTable,
-      extraWhere?: any,
+      table: TenantTable,
+      extraWhere?: SQL,
     ) {
       if (!isGlobalAdmin) {
         throw new Error(
@@ -702,10 +783,10 @@ export async function tenantDb() {
       }
 
       if (!extraWhere) {
-    throw new Error(
-      "Force delete requires an explicit where condition.",
-    );
-  }
+        throw new Error(
+          "Force delete requires an explicit where condition.",
+        );
+      }
       return db
         .delete(table)
         .where(extraWhere);
