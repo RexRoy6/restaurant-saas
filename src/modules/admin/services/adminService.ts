@@ -1,4 +1,4 @@
-import { Company, CompanyDashboard, User } from "../types/admin";
+import { Company, User,Timezone } from "../types/admin";
 
 export async function fetchMe(): Promise<User | null> {
   const res = await fetch("/api/admin/me", {
@@ -27,38 +27,45 @@ export async function fetchCompanies(): Promise<Company[]> {
   return data;
 }
 
-export async function createCompany(name: string) {
+export async function createCompany(
+  name: string,
+  timezoneId: number,
+) {
   const res = await fetch("/api/admin/companies", {
     method: "POST",
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({
+      name,
+      timezoneId,
+    }),
   });
-
-  if (!res.ok) {
-    throw new Error("Error al crear empresa");
-  }
-
-  return res.json();
-}
-
-export async function fetchCompanyDashboard(
-  companyId: string
-): Promise<CompanyDashboard> {
-  const res = await fetch(
-    `/api/admin/companies/${companyId}/dashboard`,
-    {
-      method: "GET",
-      credentials: "include",
-    }
-  );
 
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error("Error al cargar dashboard");
+    throw new Error(
+      data.error || "Error al crear empresa",
+    );
+  }
+
+  return data;
+}
+
+export async function fetchTimezones(): Promise<Timezone[]> {
+  const res = await fetch("/api/admin/timezones", {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const data = await res.json().catch(() => []);
+
+  if (!res.ok) {
+    throw new Error(
+      "Error al cargar zonas horarias",
+    );
   }
 
   return data;

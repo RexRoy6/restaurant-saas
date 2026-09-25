@@ -93,7 +93,8 @@ export async function middleware(req: NextRequest) {
     )
   }
 }
-
+///
+//El middleware solo protege APIs.
 export const config = {
   matcher: ["/api/:path*"]
 }

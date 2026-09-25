@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "crmsandiasoft",
-  description: "crm online web-app",
+  title: "hospi-host-system",
+  description: "online pos system",
 };
 
 export default function RootLayout({

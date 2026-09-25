@@ -1,1 +1,0 @@
-ALTER TABLE `services` ADD CONSTRAINT `services_company_name_unique` UNIQUE(`company_id`,`name`);

@@ -1,19 +1,13 @@
 import { useEffect, useState } from "react";
-import { Company, User, CompanyDashboard } from "../types/admin";
-import { fetchCompanyDashboard } from "../services/adminService";
+import { Company, User } from "../types/admin";
 
 export function useAdminCompany(companyId: string) {
 
   const [company, setCompany] = useState<Company | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [activeTab, setActiveTab] = useState<"team" | "events" | "services">(
-    "team",
-  );
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [suspendConfirm, setSuspendConfirm] = useState(false);
   const [reactivateConfirm, setReactivateConfirm] = useState(false);
-  const [dashboard, setDashboard] = useState<CompanyDashboard | null>(null);
 
 
   //error estates
@@ -115,24 +109,6 @@ export function useAdminCompany(companyId: string) {
     }
   };
 
-  const loadDashboard = async () => {
-    try {
-      const result = await fetchCompanyDashboard(companyId);
-
-      setDashboard(result);
-    } catch {
-      setError("Error al cargar dashboard");
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === "events") {
-      loadDashboard();
-    }
-  }, [activeTab]);
-
-
-
   //crear users:
   const createOwner = async (
     email: string,
@@ -217,9 +193,6 @@ export function useAdminCompany(companyId: string) {
   return {
     company,
     users,
-    dashboard,
-    activeTab,
-    setActiveTab,
     loading,
     loadError,
     actionError,

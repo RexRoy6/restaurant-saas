@@ -1,1 +1,0 @@
-ALTER TABLE `contracts` ADD CONSTRAINT `contracts_event_unique` UNIQUE(`event_id`);
