@@ -50,12 +50,13 @@ export default function AdminPage() {
           setTimezoneId={setNewCompanyTimezoneId}
           timezones={timezones}
           creating={creating}
-          onCreate={createCompany}
-//posible solucion, model se queda abierto?
-//           onCreate={async () => {
-//   await createCompany();
-//   setShowCreateModal(false);
-// }}
+          onCreate={async () => {
+            const success = await createCompany();
+
+            if (success) {
+              setShowCreateModal(false);
+            }
+          }}
 
 
           onClose={() => setShowCreateModal(false)}
