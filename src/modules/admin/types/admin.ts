@@ -1,9 +1,12 @@
 export interface Company {
   id: number;
   name: string;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt: Date | null;
+  slug: string;
+  currency: "MXN";
+  timezoneId: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
 }
 
 export interface User {
@@ -19,4 +22,9 @@ export interface Metrics {
   total: number;
   active: number;
   newSignups: number;
+}
+export interface Timezone {
+  id: number;
+  name: string;
+  label: string;
 }
