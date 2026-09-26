@@ -55,6 +55,7 @@ type TenantTable =
   | typeof payments;
 
 type TenantValues = Record<string, unknown>;
+type TenantRow<T extends TenantTable> = T["$inferSelect"];
 
 /**
  * ============================================================
@@ -160,7 +161,10 @@ async function assertParentBelongsToTenant(
   /**
  * Check no tiene un parent tenant adicional.
  */
-  if (table === checks) {
+  if (
+    table === categories ||
+    table === checks
+  ) {
     return;
   }
 
@@ -561,10 +565,10 @@ export async function tenantDb() {
      * FIND MANY
      * ========================================================
      */
-    findMany(
-      table: TenantTable,
+    async findMany<T extends TenantTable>(
+      table: T,
       extraWhere?: SQL,
-    ) {
+    ): Promise<TenantRow<T>[]> {
       const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
@@ -574,10 +578,12 @@ export async function tenantDb() {
           : baseWhere,
       );
 
-      return db
+      const rows = await db
         .select()
         .from(table)
         .where(where);
+
+      return rows as TenantRow<T>[];
     },
 
     /**
@@ -588,11 +594,11 @@ export async function tenantDb() {
      * Incluye soft deleted, pero continúa respetando
      * tenant isolation.
      */
-    findManyRaw(
-      table: TenantTable,
+    async findManyRaw<T extends TenantTable>(
+      table: T,
       extraWhere?: SQL,
-    ) {
-      return db
+    ): Promise<TenantRow<T>[]> {
+      const rows = await db
         .select()
         .from(table)
         .where(
@@ -601,6 +607,8 @@ export async function tenantDb() {
             extraWhere,
           ),
         );
+
+      return rows as TenantRow<T>[];
     },
 
     /**
@@ -608,10 +616,10 @@ export async function tenantDb() {
      * FIND FIRST
      * ========================================================
      */
-    findFirst(
-      table: TenantTable,
+    async findFirst<T extends TenantTable>(
+      table: T,
       extraWhere?: SQL,
-    ) {
+    ): Promise<TenantRow<T> | null> {
       const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
@@ -621,14 +629,13 @@ export async function tenantDb() {
           : baseWhere,
       );
 
-      return db
+      const rows = await db
         .select()
         .from(table)
         .where(where)
-        .limit(1)
-        .then(
-          (rows) => rows[0] ?? null,
-        );
+        .limit(1) as TenantRow<T>[];
+
+      return rows[0] ?? null;
     },
 
     /**
@@ -636,11 +643,11 @@ export async function tenantDb() {
      * FIND FIRST RAW
      * ========================================================
      */
-    findFirstRaw(
-      table: TenantTable,
+    async findFirstRaw<T extends TenantTable>(
+      table: T,
       extraWhere?: SQL,
-    ) {
-      return db
+    ): Promise<TenantRow<T> | null> {
+      const rows = await db
         .select()
         .from(table)
         .where(
@@ -649,10 +656,9 @@ export async function tenantDb() {
             extraWhere,
           ),
         )
-        .limit(1)
-        .then(
-          (rows) => rows[0] ?? null,
-        );
+        .limit(1) as TenantRow<T>[];
+
+      return rows[0] ?? null;
     },
 
     /**
