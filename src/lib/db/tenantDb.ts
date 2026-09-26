@@ -1,5 +1,6 @@
 import {
   and,
+  isNotNull,
   isNull,
   count,
   sum,
@@ -10,6 +11,7 @@ import {
 
 import { db } from "@/db";
 import {
+  categories,
   products,
   checks,
   orders,
@@ -45,6 +47,7 @@ import { requireAuth } from "@/lib/auth/requireAuth";
  */
 
 type TenantTable =
+  | typeof categories
   | typeof products
   | typeof checks
   | typeof orders
@@ -52,6 +55,7 @@ type TenantTable =
   | typeof payments;
 
 type TenantValues = Record<string, unknown>;
+type TenantRow<T extends TenantTable> = T["$inferSelect"];
 
 /**
  * ============================================================
@@ -79,6 +83,7 @@ function buildTenantWhere(
   }
 
   const tenantTables = [
+    categories,
     products,
     checks,
     orders,
@@ -153,10 +158,46 @@ async function assertParentBelongsToTenant(
    * Product y Check no tienen un parent tenant
    * adicional que validar.
    */
+  /**
+ * Check no tiene un parent tenant adicional.
+ */
   if (
-    table === products ||
+    table === categories ||
     table === checks
   ) {
+    return;
+  }
+
+  /**
+   * Product pertenece a una Category
+   * del mismo tenant.
+   */
+  if (table === products) {
+    const categoryId = requireNumericId(
+      values,
+      "categoryId",
+    );
+
+    const [parentCategory] = await db
+      .select({
+        id: categories.id,
+      })
+      .from(categories)
+      .where(
+        and(
+          eq(categories.id, categoryId),
+          eq(categories.companyId, companyId),
+          isNull(categories.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!parentCategory) {
+      throw new Error(
+        "Category does not belong to current tenant.",
+      );
+    }
+
     return;
   }
 
@@ -306,6 +347,7 @@ function sanitizeTenantUpdate(
   }
 
   const tenantTables = [
+    categories,
     products,
     checks,
     orders,
@@ -324,6 +366,10 @@ function sanitizeTenantUpdate(
       "companyId cannot be changed through tenantDb.",
     );
   }
+
+
+
+
 
   if (
     table === orders &&
@@ -357,6 +403,57 @@ function sanitizeTenantUpdate(
 
   return values;
 }
+
+
+async function assertUpdateParentsBelongToTenant(
+  table: TenantTable,
+  values: TenantValues,
+  companyId: number,
+  isGlobalAdmin: boolean,
+) {
+  if (isGlobalAdmin) {
+    return;
+  }
+
+  /**
+   * Product puede cambiar de Category,
+   * pero la nueva Category debe:
+   *
+   * - existir
+   * - pertenecer al mismo tenant
+   * - estar activa
+   */
+  if (
+    table === products &&
+    "categoryId" in values
+  ) {
+    const categoryId = requireNumericId(
+      values,
+      "categoryId",
+    );
+
+    const [parentCategory] = await db
+      .select({
+        id: categories.id,
+      })
+      .from(categories)
+      .where(
+        and(
+          eq(categories.id, categoryId),
+          eq(categories.companyId, companyId),
+          isNull(categories.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!parentCategory) {
+      throw new Error(
+        "Category does not belong to current tenant.",
+      );
+    }
+  }
+}
+
 
 /**
  * ============================================================
@@ -513,10 +610,10 @@ export async function tenantDb() {
      * FIND MANY
      * ========================================================
      */
-    findMany(
-      table: TenantTable,
+    async findMany<T extends TenantTable>(
+      table: T,
       extraWhere?: SQL,
-    ) {
+    ): Promise<TenantRow<T>[]> {
       const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
@@ -526,10 +623,12 @@ export async function tenantDb() {
           : baseWhere,
       );
 
-      return db
+      const rows = await db
         .select()
         .from(table)
         .where(where);
+
+      return rows as TenantRow<T>[];
     },
 
     /**
@@ -540,11 +639,11 @@ export async function tenantDb() {
      * Incluye soft deleted, pero continúa respetando
      * tenant isolation.
      */
-    findManyRaw(
-      table: TenantTable,
+    async findManyRaw<T extends TenantTable>(
+      table: T,
       extraWhere?: SQL,
-    ) {
-      return db
+    ): Promise<TenantRow<T>[]> {
+      const rows = await db
         .select()
         .from(table)
         .where(
@@ -553,6 +652,8 @@ export async function tenantDb() {
             extraWhere,
           ),
         );
+
+      return rows as TenantRow<T>[];
     },
 
     /**
@@ -560,10 +661,10 @@ export async function tenantDb() {
      * FIND FIRST
      * ========================================================
      */
-    findFirst(
-      table: TenantTable,
+    async findFirst<T extends TenantTable>(
+      table: T,
       extraWhere?: SQL,
-    ) {
+    ): Promise<TenantRow<T> | null> {
       const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
@@ -573,14 +674,13 @@ export async function tenantDb() {
           : baseWhere,
       );
 
-      return db
+      const rows = await db
         .select()
         .from(table)
         .where(where)
-        .limit(1)
-        .then(
-          (rows) => rows[0] ?? null,
-        );
+        .limit(1) as TenantRow<T>[];
+
+      return rows[0] ?? null;
     },
 
     /**
@@ -588,11 +688,11 @@ export async function tenantDb() {
      * FIND FIRST RAW
      * ========================================================
      */
-    findFirstRaw(
-      table: TenantTable,
+    async findFirstRaw<T extends TenantTable>(
+      table: T,
       extraWhere?: SQL,
-    ) {
-      return db
+    ): Promise<TenantRow<T> | null> {
+      const rows = await db
         .select()
         .from(table)
         .where(
@@ -601,10 +701,9 @@ export async function tenantDb() {
             extraWhere,
           ),
         )
-        .limit(1)
-        .then(
-          (rows) => rows[0] ?? null,
-        );
+        .limit(1) as TenantRow<T>[];
+
+      return rows[0] ?? null;
     },
 
     /**
@@ -647,6 +746,15 @@ export async function tenantDb() {
           ...values,
           companyId: currentCompanyId,
         };
+
+      if (table === categories) {
+        return db
+          .insert(categories)
+          .values(
+            insertValues as typeof categories.$inferInsert,
+          );
+      }
+
 
       if (table === products) {
         return db
@@ -698,7 +806,7 @@ export async function tenantDb() {
      * UPDATE
      * ========================================================
      */
-    update(
+    async update(
       table: TenantTable,
       values: TenantValues,
       extraWhere?: SQL,
@@ -708,18 +816,27 @@ export async function tenantDb() {
           "Update requires an explicit where condition.",
         );
       }
+
       const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
         table,
-        extraWhere
-          ? and(baseWhere, extraWhere)
-          : baseWhere,
+        and(
+          baseWhere,
+          extraWhere,
+        ),
       );
 
       const safeValues = sanitizeTenantUpdate(
         table,
         values,
+        isGlobalAdmin,
+      );
+
+      await assertUpdateParentsBelongToTenant(
+        table,
+        safeValues,
+        currentCompanyId,
         isGlobalAdmin,
       );
 
@@ -766,6 +883,51 @@ export async function tenantDb() {
         })
         .where(where);
     },
+
+    /**
+ * ========================================================
+ * RESTORE / REACTIVATE
+ * ========================================================
+ *
+ * Reactiva un registro previamente soft-deleted.
+ *
+ * Mantiene tenant isolation y requiere siempre
+ * una condición explícita.
+ */
+    restore(
+      table: TenantTable,
+      extraWhere?: SQL,
+    ) {
+      if (!extraWhere) {
+        throw new Error(
+          "Restore requires an explicit where condition.",
+        );
+      }
+
+      if (!table.deletedAt) {
+        throw new Error(
+          "Restore not supported on this table",
+        );
+      }
+
+      const baseWhere = isNotNull(table.deletedAt);
+
+      const where = buildWhere(
+        table,
+        and(
+          baseWhere,
+          extraWhere,
+        ),
+      );
+
+      return db
+        .update(table)
+        .set({
+          deletedAt: null,
+        })
+        .where(where);
+    },
+
 
     /**
      * ========================================================

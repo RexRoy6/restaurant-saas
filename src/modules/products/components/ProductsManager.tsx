@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect,useState } from "react";
 import {
   Pencil,
   Plus,
@@ -8,23 +8,27 @@ import {
 } from "lucide-react";
 
 import { useProducts } from "../hooks/useProducts";
-
+import CategoriesManager from "./CategoriesManager";
+import { useCategories } from "../hooks/useCategories";
 import type {
   Product,
   ProductInput,
 } from "../types/product";
 
 type ProductFormState = {
+  categoryId: string;
   name: string;
   sku: string;
   price: string;
 };
 
 const emptyForm: ProductFormState = {
+  categoryId: "",
   name: "",
   sku: "",
   price: "",
 };
+
 
 function formatCurrency(
   priceInCents: number,
@@ -36,6 +40,12 @@ function formatCurrency(
 }
 
 export default function ProductsManager() {
+  const [
+  selectedCategoryId,
+  setSelectedCategoryId,
+] = useState<number | null>(null);
+
+
   const {
     products,
     loading,
@@ -45,6 +55,12 @@ export default function ProductsManager() {
     editProduct,
     changeAvailability,
   } = useProducts();
+  const {
+    categories,
+    loading: categoriesLoading,
+    loadCategories,
+  } = useCategories();
+
 
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] =
@@ -66,6 +82,7 @@ export default function ProductsManager() {
     setEditingProduct(product);
 
     setForm({
+      categoryId: String(product.categoryId),
       name: product.name,
       sku: product.sku,
       price: (
@@ -93,10 +110,22 @@ export default function ProductsManager() {
   ) => {
     event.preventDefault();
     setFormError("");
-
+    const categoryId = Number(
+      form.categoryId,
+    );
     const name = form.name.trim();
     const sku = form.sku.trim();
     const price = Number(form.price);
+    if (
+      !Number.isInteger(categoryId) ||
+      categoryId <= 0
+    ) {
+      setFormError(
+        "Selecciona una categoría.",
+      );
+      return;
+    }
+
 
     if (!name) {
       setFormError("El nombre es obligatorio.");
@@ -123,6 +152,7 @@ export default function ProductsManager() {
     );
 
     const input: ProductInput = {
+      categoryId,
       name,
       sku,
       priceInCents,
@@ -147,6 +177,34 @@ export default function ProductsManager() {
       );
     }
   };
+  const filteredProducts =
+    selectedCategoryId === null
+      ? products
+      : products.filter(
+        (product) =>
+          product.categoryId ===
+          selectedCategoryId,
+      );
+
+      useEffect(() => {
+  if (selectedCategoryId === null) {
+    return;
+  }
+
+  const categoryStillActive =
+    categories.some(
+      (category) =>
+        category.id === selectedCategoryId,
+    );
+
+  if (!categoryStillActive) {
+    setSelectedCategoryId(null);
+  }
+}, [
+  categories,
+  selectedCategoryId,
+]);
+
 
   return (
     <>
@@ -164,12 +222,23 @@ export default function ProductsManager() {
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
+          disabled={
+            categoriesLoading ||
+            categories.length === 0
+          }
+          className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus size={18} />
           Nuevo producto
         </button>
       </div>
+
+      {!categoriesLoading &&
+        categories.length === 0 && (
+          <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Crea al menos una categoría antes de agregar productos.
+          </div>
+        )}
 
       {error && (
         <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -177,7 +246,51 @@ export default function ProductsManager() {
         </div>
       )}
 
+      <CategoriesManager
+        onCategoriesChanged={loadCategories}
+      />
+      {categories.length > 0 && (
+        <div className="mt-6 overflow-x-auto">
+          <div className="flex min-w-max gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                setSelectedCategoryId(null)
+              }
+              className={
+                selectedCategoryId === null
+                  ? "rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white"
+                  : "rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+              }
+            >
+              Todos
+            </button>
+
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() =>
+                  setSelectedCategoryId(
+                    category.id,
+                  )
+                }
+                className={
+                  selectedCategoryId ===
+                    category.id
+                    ? "rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white"
+                    : "rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+                }
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="mt-6 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+
+
         {loading ? (
           <div className="p-8 text-center text-sm text-gray-500">
             Cargando productos...
@@ -192,14 +305,33 @@ export default function ProductsManager() {
               Crea tu primer producto para comenzar.
             </p>
           </div>
-        ) : (
+        ) : filteredProducts.length === 0 ? (
+  <div className="p-10 text-center">
+    <p className="font-medium text-gray-900">
+      No hay productos en esta categoría
+    </p>
+
+    <p className="mt-1 text-sm text-gray-500">
+      Puedes agregar productos o cambiar de categoría.
+    </p>
+  </div>
+) : (
+
+
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="border-b border-gray-100 bg-gray-50">
                 <tr>
+                  {/* <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Categoría
+                  </th> */}
+
                   <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
                     Nombre
                   </th>
+                  <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+  Categoría
+</th>
 
                   <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
                     SKU
@@ -220,16 +352,31 @@ export default function ProductsManager() {
               </thead>
 
               <tbody className="divide-y divide-gray-100">
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
+                  
                   <tr
                     key={product.id}
                     className="hover:bg-gray-50/70"
                   >
+                    {/* <td className="px-5 py-4">
+                      <span className="font-medium text-gray-900">
+                        {product.categoryId}
+                      </span>
+                    </td> */}
+
                     <td className="px-5 py-4">
                       <span className="font-medium text-gray-900">
                         {product.name}
                       </span>
                     </td>
+
+                    <td className="px-5 py-4 text-sm text-gray-500">
+  {categories.find(
+    (category) =>
+      category.id === product.categoryId,
+  )?.name ?? "Categoría no disponible"}
+</td>
+
 
                     <td className="px-5 py-4 text-sm text-gray-500">
                       {product.sku}
@@ -318,6 +465,41 @@ export default function ProductsManager() {
               className="p-6"
             >
               <div className="space-y-4">
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                    Categoría
+                  </label>
+
+                  <select
+                    value={form.categoryId}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        categoryId: event.target.value,
+                      })
+                    }
+                    disabled={categoriesLoading}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-400 disabled:cursor-not-allowed disabled:bg-gray-50"
+                  >
+                    <option value="">
+                      {categoriesLoading
+                        ? "Cargando categorías..."
+                        : "Selecciona una categoría"}
+                    </option>
+
+                    {categories.map((category) => (
+                      <option
+                        key={category.id}
+                        value={category.id}
+                      >
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-gray-700">
                     Nombre

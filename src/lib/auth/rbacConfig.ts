@@ -59,4 +59,13 @@ export const RBAC_CONFIG: RbacRoute[] = [
       DELETE: ["owner"]
     }
   },
+  {
+    pattern: "/api/categories.*",
+    methods: {
+      GET: ["owner"],
+      POST: ["owner"],
+      PATCH: ["owner"],
+      DELETE: ["owner"]
+    }
+  },
 ]
