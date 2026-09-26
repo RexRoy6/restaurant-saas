@@ -73,6 +73,9 @@ export async function PATCH(
 
     const priceInCents = body.priceInCents;
 
+    const categoryId = body.categoryId;
+
+
     if (!name) {
       return NextResponse.json(
         { error: "Name is required" },
@@ -100,6 +103,15 @@ export async function PATCH(
         { status: 400 },
       );
     }
+    if (
+      !Number.isInteger(categoryId) ||
+      categoryId <= 0
+    ) {
+      return Response.json(
+        { error: "Valid categoryId is required" },
+        { status: 400 },
+      );
+    }
 
     const tenant = await tenantDb();
 
@@ -119,6 +131,7 @@ export async function PATCH(
     await tenant.update(
       products,
       {
+        categoryId,
         name,
         sku,
         priceInCents,
@@ -163,6 +176,18 @@ export async function PATCH(
       "PATCH /api/products/[id] error:",
       error,
     );
+    if (
+      message ===
+      "Category does not belong to current tenant."
+    ) {
+      return Response.json(
+        {
+          error: "Category not found or unavailable",
+        },
+        { status: 400 },
+      );
+    }
+
 
     return NextResponse.json(
       { error: "Internal server error" },
