@@ -38,6 +38,24 @@ export async function getCategories(): Promise<Category[]> {
 
   return response.json();
 }
+//esta te trae las cats que hayan sido desactivadas
+export async function getAllCategories(): Promise<Category[]> {
+  const response = await fetch(
+    "/api/categories/all",
+    {
+      method: "GET",
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response),
+    );
+  }
+
+  return response.json();
+}
 
 export async function createCategory(
   input: CategoryInput,
