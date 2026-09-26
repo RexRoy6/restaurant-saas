@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect,useState } from "react";
 import {
   Pencil,
   Plus,
@@ -186,6 +186,26 @@ export default function ProductsManager() {
           selectedCategoryId,
       );
 
+      useEffect(() => {
+  if (selectedCategoryId === null) {
+    return;
+  }
+
+  const categoryStillActive =
+    categories.some(
+      (category) =>
+        category.id === selectedCategoryId,
+    );
+
+  if (!categoryStillActive) {
+    setSelectedCategoryId(null);
+  }
+}, [
+  categories,
+  selectedCategoryId,
+]);
+
+
   return (
     <>
       <div className="flex items-center justify-between gap-4">
@@ -309,6 +329,9 @@ export default function ProductsManager() {
                   <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
                     Nombre
                   </th>
+                  <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+  Categoría
+</th>
 
                   <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
                     SKU
@@ -346,6 +369,14 @@ export default function ProductsManager() {
                         {product.name}
                       </span>
                     </td>
+
+                    <td className="px-5 py-4 text-sm text-gray-500">
+  {categories.find(
+    (category) =>
+      category.id === product.categoryId,
+  )?.name ?? "Categoría no disponible"}
+</td>
+
 
                     <td className="px-5 py-4 text-sm text-gray-500">
                       {product.sku}
