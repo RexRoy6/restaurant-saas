@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 import { useProducts } from "../hooks/useProducts";
-
+import CategoriesManager from "./CategoriesManager";
 import type {
   Product,
   ProductInput,
@@ -171,13 +171,18 @@ export default function ProductsManager() {
         </button>
       </div>
 
-      {error && (
-        <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+  {error && (
+  <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+    {error}
+  </div>
+)}
+
+<CategoriesManager />
+
+<div className="mt-6 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+
+
         {loading ? (
           <div className="p-8 text-center text-sm text-gray-500">
             Cargando productos...
