@@ -1,6 +1,7 @@
 export type Product = {
   id: number;
   companyId: number;
+  categoryId: number;
   name: string;
   sku: string;
   priceInCents: number;
@@ -11,6 +12,7 @@ export type Product = {
 };
 
 export type ProductInput = {
+  categoryId: number;
   name: string;
   sku: string;
   priceInCents: number;
