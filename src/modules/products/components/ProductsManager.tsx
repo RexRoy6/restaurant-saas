@@ -196,26 +196,10 @@ export default function ProductsManager() {
           product.categoryId ===
           activeSelectedCategoryId,
       );
-
-
-  // useEffect(() => {
-  //   if (selectedCategoryId === null) {
-  //     return;
-  //   }
-
-  //   const categoryStillActive =
-  //     categories.some(
-  //       (category) =>
-  //         category.id === selectedCategoryId,
-  //     );
-
-  //   if (!categoryStillActive) {
-  //     setSelectedCategoryId(null);
-  //   }
-  // }, [
-  //   categories,
-  //   selectedCategoryId,
-  // ]);
+  const handleCategoriesChanged = async () => {
+    setSelectedCategoryId(null);
+    await loadCategories();
+  };
 
 
 
@@ -261,7 +245,7 @@ export default function ProductsManager() {
       )}
 
       <CategoriesManager
-        onCategoriesChanged={loadCategories}
+        onCategoriesChanged={handleCategoriesChanged}
       />
       {categories.length > 0 && (
         <div className="mt-6 overflow-x-auto">
