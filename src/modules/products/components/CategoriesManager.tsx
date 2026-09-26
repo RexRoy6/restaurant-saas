@@ -32,6 +32,17 @@ export default function CategoriesManager({
         categoryId: number,
         isActive: boolean,
     ) => {
+        if (!isActive) {
+            const confirmed = window.confirm(
+                "¿Deshabilitar esta categoría?\n\n" +
+                "Los productos asociados conservarán su categoría, " +
+                "pero no podrás asignarla a nuevos productos mientras esté deshabilitada.",
+            );
+
+            if (!confirmed) {
+                return;
+            }
+        }
         const success =
             await changeAvailability(
                 categoryId,

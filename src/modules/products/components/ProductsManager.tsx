@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect,useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Pencil,
   Plus,
@@ -41,9 +41,9 @@ function formatCurrency(
 
 export default function ProductsManager() {
   const [
-  selectedCategoryId,
-  setSelectedCategoryId,
-] = useState<number | null>(null);
+    selectedCategoryId,
+    setSelectedCategoryId,
+  ] = useState<number | null>(null);
 
 
   const {
@@ -186,24 +186,24 @@ export default function ProductsManager() {
           selectedCategoryId,
       );
 
-      useEffect(() => {
-  if (selectedCategoryId === null) {
-    return;
-  }
+  useEffect(() => {
+    if (selectedCategoryId === null) {
+      return;
+    }
 
-  const categoryStillActive =
-    categories.some(
-      (category) =>
-        category.id === selectedCategoryId,
-    );
+    const categoryStillActive =
+      categories.some(
+        (category) =>
+          category.id === selectedCategoryId,
+      );
 
-  if (!categoryStillActive) {
-    setSelectedCategoryId(null);
-  }
-}, [
-  categories,
-  selectedCategoryId,
-]);
+    if (!categoryStillActive) {
+      setSelectedCategoryId(null);
+    }
+  }, [
+    categories,
+    selectedCategoryId,
+  ]);
 
 
   return (
@@ -306,32 +306,28 @@ export default function ProductsManager() {
             </p>
           </div>
         ) : filteredProducts.length === 0 ? (
-  <div className="p-10 text-center">
-    <p className="font-medium text-gray-900">
-      No hay productos en esta categoría
-    </p>
+          <div className="p-10 text-center">
+            <p className="font-medium text-gray-900">
+              No hay productos en esta categoría
+            </p>
 
-    <p className="mt-1 text-sm text-gray-500">
-      Puedes agregar productos o cambiar de categoría.
-    </p>
-  </div>
-) : (
+            <p className="mt-1 text-sm text-gray-500">
+              Puedes agregar productos o cambiar de categoría.
+            </p>
+          </div>
+        ) : (
 
 
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="border-b border-gray-100 bg-gray-50">
                 <tr>
-                  {/* <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Categoría
-                  </th> */}
-
                   <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
                     Nombre
                   </th>
                   <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-  Categoría
-</th>
+                    Categoría
+                  </th>
 
                   <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
                     SKU
@@ -353,17 +349,11 @@ export default function ProductsManager() {
 
               <tbody className="divide-y divide-gray-100">
                 {filteredProducts.map((product) => (
-                  
+
                   <tr
                     key={product.id}
                     className="hover:bg-gray-50/70"
                   >
-                    {/* <td className="px-5 py-4">
-                      <span className="font-medium text-gray-900">
-                        {product.categoryId}
-                      </span>
-                    </td> */}
-
                     <td className="px-5 py-4">
                       <span className="font-medium text-gray-900">
                         {product.name}
@@ -371,11 +361,11 @@ export default function ProductsManager() {
                     </td>
 
                     <td className="px-5 py-4 text-sm text-gray-500">
-  {categories.find(
-    (category) =>
-      category.id === product.categoryId,
-  )?.name ?? "Categoría no disponible"}
-</td>
+                      {categories.find(
+                        (category) =>
+                          category.id === product.categoryId,
+                      )?.name ?? "Categoría no disponible"}
+                    </td>
 
 
                     <td className="px-5 py-4 text-sm text-gray-500">
