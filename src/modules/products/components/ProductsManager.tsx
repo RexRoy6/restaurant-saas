@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Pencil,
   Plus,
@@ -177,33 +177,47 @@ export default function ProductsManager() {
       );
     }
   };
+
+  const activeSelectedCategoryId =
+    selectedCategoryId !== null &&
+      categories.some(
+        (category) =>
+          category.id === selectedCategoryId,
+      )
+      ? selectedCategoryId
+      : null;
+
+
   const filteredProducts =
-    selectedCategoryId === null
+    activeSelectedCategoryId === null
       ? products
       : products.filter(
         (product) =>
           product.categoryId ===
-          selectedCategoryId,
+          activeSelectedCategoryId,
       );
 
-  useEffect(() => {
-    if (selectedCategoryId === null) {
-      return;
-    }
 
-    const categoryStillActive =
-      categories.some(
-        (category) =>
-          category.id === selectedCategoryId,
-      );
+  // useEffect(() => {
+  //   if (selectedCategoryId === null) {
+  //     return;
+  //   }
 
-    if (!categoryStillActive) {
-      setSelectedCategoryId(null);
-    }
-  }, [
-    categories,
-    selectedCategoryId,
-  ]);
+  //   const categoryStillActive =
+  //     categories.some(
+  //       (category) =>
+  //         category.id === selectedCategoryId,
+  //     );
+
+  //   if (!categoryStillActive) {
+  //     setSelectedCategoryId(null);
+  //   }
+  // }, [
+  //   categories,
+  //   selectedCategoryId,
+  // ]);
+
+
 
 
   return (
@@ -258,7 +272,7 @@ export default function ProductsManager() {
                 setSelectedCategoryId(null)
               }
               className={
-                selectedCategoryId === null
+                activeSelectedCategoryId === null
                   ? "rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white"
                   : "rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
               }
@@ -276,8 +290,7 @@ export default function ProductsManager() {
                   )
                 }
                 className={
-                  selectedCategoryId ===
-                    category.id
+                  activeSelectedCategoryId === category.id
                     ? "rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white"
                     : "rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
                 }
