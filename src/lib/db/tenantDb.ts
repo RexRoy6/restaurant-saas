@@ -10,6 +10,7 @@ import {
 
 import { db } from "@/db";
 import {
+  categories,
   products,
   checks,
   orders,
@@ -45,6 +46,7 @@ import { requireAuth } from "@/lib/auth/requireAuth";
  */
 
 type TenantTable =
+  | typeof categories
   | typeof products
   | typeof checks
   | typeof orders
@@ -79,6 +81,7 @@ function buildTenantWhere(
   }
 
   const tenantTables = [
+    categories,
     products,
     checks,
     orders,
@@ -153,10 +156,43 @@ async function assertParentBelongsToTenant(
    * Product y Check no tienen un parent tenant
    * adicional que validar.
    */
-  if (
-    table === products ||
-    table === checks
-  ) {
+  /**
+ * Check no tiene un parent tenant adicional.
+ */
+  if (table === checks) {
+    return;
+  }
+
+  /**
+   * Product pertenece a una Category
+   * del mismo tenant.
+   */
+  if (table === products) {
+    const categoryId = requireNumericId(
+      values,
+      "categoryId",
+    );
+
+    const [parentCategory] = await db
+      .select({
+        id: categories.id,
+      })
+      .from(categories)
+      .where(
+        and(
+          eq(categories.id, categoryId),
+          eq(categories.companyId, companyId),
+          isNull(categories.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!parentCategory) {
+      throw new Error(
+        "Category does not belong to current tenant.",
+      );
+    }
+
     return;
   }
 
@@ -306,6 +342,7 @@ function sanitizeTenantUpdate(
   }
 
   const tenantTables = [
+    categories, ,
     products,
     checks,
     orders,
@@ -324,6 +361,16 @@ function sanitizeTenantUpdate(
       "companyId cannot be changed through tenantDb.",
     );
   }
+
+  if (
+    table === products &&
+    "categoryId" in values
+  ) {
+    throw new Error(
+      "Product categoryId cannot be changed through tenantDb update.",
+    );
+  }
+
 
   if (
     table === orders &&
@@ -647,6 +694,15 @@ export async function tenantDb() {
           ...values,
           companyId: currentCompanyId,
         };
+
+      if (table === categories) {
+        return db
+          .insert(categories)
+          .values(
+            insertValues as typeof categories.$inferInsert,
+          );
+      }
+
 
       if (table === products) {
         return db

@@ -134,6 +134,51 @@ export const companies = mysqlTable(
   }),
 );
 
+//categorias para productos
+/* ---------- CATEGORIES ---------- */
+
+export const categories = mysqlTable(
+  "categories",
+  {
+    id: bigint("id", { mode: "number" })
+      .primaryKey()
+      .autoincrement(),
+
+    companyId: bigint("company_id", {
+      mode: "number",
+    })
+      .notNull()
+      .references(() => companies.id),
+
+    name: varchar("name", {
+      length: 120,
+    }).notNull(),
+
+    sortOrder: bigint("sort_order", {
+      mode: "number",
+    })
+      .notNull()
+      .default(0),
+
+    ...baseColumns,
+  },
+  (table) => ({
+    companyNameUnique: uniqueIndex(
+      "categories_company_name_unique",
+    ).on(
+      table.companyId,
+      table.name,
+    ),
+
+    companySortOrderIdx: index(
+      "categories_company_sort_order_idx",
+    ).on(
+      table.companyId,
+      table.sortOrder,
+    ),
+  }),
+);
+
 // productos nene
 export const products = mysqlTable(
   "products",
@@ -145,6 +190,13 @@ export const products = mysqlTable(
     companyId: bigint("company_id", { mode: "number" })
       .notNull()
       .references(() => companies.id),
+
+    categoryId: bigint("category_id", {
+      mode: "number",
+    })
+      .notNull()
+      .references(() => categories.id),
+
 
     name: varchar("name", { length: 255 })
       .notNull(),
@@ -171,9 +223,13 @@ export const products = mysqlTable(
       table.sku,
     ),
     priceNonNegative: check(
-  "products_price_non_negative",
-  sql`${table.priceInCents} >= 0`,
-),
+      "products_price_non_negative",
+      sql`${table.priceInCents} >= 0`,
+    ),
+    categoryIdx: index(
+      "products_category_idx",
+    ).on(table.categoryId),
+
 
 
   }),
@@ -262,8 +318,8 @@ export const orders = mysqlTable(
       table.status,
     ),
     cancelledByIdx: index(
-  "orders_cancelled_by_idx",
-).on(table.cancelledBy),
+      "orders_cancelled_by_idx",
+    ).on(table.cancelledBy),
   }),
 );
 
@@ -324,20 +380,20 @@ export const orderItems = mysqlTable(
     productIdx: index("order_items_product_idx")
       .on(table.productId),
 
-      unitPriceNonNegative: check(
-  "order_items_unit_price_non_negative",
-  sql`${table.unitPriceInCents} >= 0`,
-),
+    unitPriceNonNegative: check(
+      "order_items_unit_price_non_negative",
+      sql`${table.unitPriceInCents} >= 0`,
+    ),
 
-quantityPositive: check(
-  "order_items_quantity_positive",
-  sql`${table.quantity} > 0`,
-),
+    quantityPositive: check(
+      "order_items_quantity_positive",
+      sql`${table.quantity} > 0`,
+    ),
 
-subtotalNonNegative: check(
-  "order_items_subtotal_non_negative",
-  sql`${table.subtotalInCents} >= 0`,
-),
+    subtotalNonNegative: check(
+      "order_items_subtotal_non_negative",
+      sql`${table.subtotalInCents} >= 0`,
+    ),
   }),
 );
 
@@ -387,9 +443,9 @@ export const payments = mysqlTable(
     ),
 
     amountPositive: check(
-  "payments_amount_positive",
-  sql`${table.amountInCents} > 0`,
-),
+      "payments_amount_positive",
+      sql`${table.amountInCents} > 0`,
+    ),
 
   }),
 );
