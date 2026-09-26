@@ -347,7 +347,7 @@ function sanitizeTenantUpdate(
   }
 
   const tenantTables = [
-    categories, ,
+    categories,
     products,
     checks,
     orders,
@@ -367,14 +367,8 @@ function sanitizeTenantUpdate(
     );
   }
 
-  if (
-    table === products &&
-    "categoryId" in values
-  ) {
-    throw new Error(
-      "Product categoryId cannot be changed through tenantDb update.",
-    );
-  }
+
+
 
 
   if (
@@ -409,6 +403,57 @@ function sanitizeTenantUpdate(
 
   return values;
 }
+
+
+async function assertUpdateParentsBelongToTenant(
+  table: TenantTable,
+  values: TenantValues,
+  companyId: number,
+  isGlobalAdmin: boolean,
+) {
+  if (isGlobalAdmin) {
+    return;
+  }
+
+  /**
+   * Product puede cambiar de Category,
+   * pero la nueva Category debe:
+   *
+   * - existir
+   * - pertenecer al mismo tenant
+   * - estar activa
+   */
+  if (
+    table === products &&
+    "categoryId" in values
+  ) {
+    const categoryId = requireNumericId(
+      values,
+      "categoryId",
+    );
+
+    const [parentCategory] = await db
+      .select({
+        id: categories.id,
+      })
+      .from(categories)
+      .where(
+        and(
+          eq(categories.id, categoryId),
+          eq(categories.companyId, companyId),
+          isNull(categories.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!parentCategory) {
+      throw new Error(
+        "Category does not belong to current tenant.",
+      );
+    }
+  }
+}
+
 
 /**
  * ============================================================
@@ -761,7 +806,7 @@ export async function tenantDb() {
      * UPDATE
      * ========================================================
      */
-    update(
+    async update(
       table: TenantTable,
       values: TenantValues,
       extraWhere?: SQL,
@@ -771,18 +816,27 @@ export async function tenantDb() {
           "Update requires an explicit where condition.",
         );
       }
+
       const baseWhere = isNull(table.deletedAt);
 
       const where = buildWhere(
         table,
-        extraWhere
-          ? and(baseWhere, extraWhere)
-          : baseWhere,
+        and(
+          baseWhere,
+          extraWhere,
+        ),
       );
 
       const safeValues = sanitizeTenantUpdate(
         table,
         values,
+        isGlobalAdmin,
+      );
+
+      await assertUpdateParentsBelongToTenant(
+        table,
+        safeValues,
+        currentCompanyId,
         isGlobalAdmin,
       );
 
