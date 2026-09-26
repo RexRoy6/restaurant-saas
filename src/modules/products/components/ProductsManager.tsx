@@ -29,6 +29,7 @@ const emptyForm: ProductFormState = {
   price: "",
 };
 
+
 function formatCurrency(
   priceInCents: number,
 ) {
@@ -39,6 +40,12 @@ function formatCurrency(
 }
 
 export default function ProductsManager() {
+  const [
+  selectedCategoryId,
+  setSelectedCategoryId,
+] = useState<number | null>(null);
+
+
   const {
     products,
     loading,
@@ -170,6 +177,14 @@ export default function ProductsManager() {
       );
     }
   };
+  const filteredProducts =
+    selectedCategoryId === null
+      ? products
+      : products.filter(
+        (product) =>
+          product.categoryId ===
+          selectedCategoryId,
+      );
 
   return (
     <>
@@ -214,7 +229,45 @@ export default function ProductsManager() {
       <CategoriesManager
         onCategoriesChanged={loadCategories}
       />
+      {categories.length > 0 && (
+        <div className="mt-6 overflow-x-auto">
+          <div className="flex min-w-max gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                setSelectedCategoryId(null)
+              }
+              className={
+                selectedCategoryId === null
+                  ? "rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white"
+                  : "rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+              }
+            >
+              Todos
+            </button>
 
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() =>
+                  setSelectedCategoryId(
+                    category.id,
+                  )
+                }
+                className={
+                  selectedCategoryId ===
+                    category.id
+                    ? "rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white"
+                    : "rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+                }
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="mt-6 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
 
 
@@ -232,7 +285,19 @@ export default function ProductsManager() {
               Crea tu primer producto para comenzar.
             </p>
           </div>
-        ) : (
+        ) : filteredProducts.length === 0 ? (
+  <div className="p-10 text-center">
+    <p className="font-medium text-gray-900">
+      No hay productos en esta categoría
+    </p>
+
+    <p className="mt-1 text-sm text-gray-500">
+      Puedes agregar productos o cambiar de categoría.
+    </p>
+  </div>
+) : (
+
+
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="border-b border-gray-100 bg-gray-50">
@@ -264,7 +329,8 @@ export default function ProductsManager() {
               </thead>
 
               <tbody className="divide-y divide-gray-100">
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
+                  
                   <tr
                     key={product.id}
                     className="hover:bg-gray-50/70"
