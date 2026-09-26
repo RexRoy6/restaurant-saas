@@ -51,6 +51,7 @@ export default function ProductsManager() {
   const {
     categories,
     loading: categoriesLoading,
+    loadCategories,
   } = useCategories();
 
 
@@ -196,7 +197,7 @@ export default function ProductsManager() {
           Nuevo producto
         </button>
       </div>
-      
+
       {!categoriesLoading &&
         categories.length === 0 && (
           <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -210,7 +211,9 @@ export default function ProductsManager() {
         </div>
       )}
 
-      <CategoriesManager />
+      <CategoriesManager
+        onCategoriesChanged={loadCategories}
+      />
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
 
