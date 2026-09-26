@@ -1,3 +1,14 @@
+import type {
+  MySql2Database,
+  MySql2Transaction,
+} from "drizzle-orm/mysql2";
+
+import type {
+  TablesRelationalConfig,
+} from "drizzle-orm/relations";
+
+import * as schema from "@/db/schema";
+
 import {
   and,
   isNotNull,
@@ -56,6 +67,18 @@ type TenantTable =
 
 type TenantValues = Record<string, unknown>;
 type TenantRow<T extends TenantTable> = T["$inferSelect"];
+
+type AppSchema = typeof schema;
+
+type TenantDbTransaction = MySql2Transaction<
+  AppSchema,
+  TablesRelationalConfig
+>;
+
+type TenantDbExecutor =
+  | MySql2Database<AppSchema>
+  | TenantDbTransaction;
+
 
 /**
  * ============================================================
@@ -143,6 +166,7 @@ function requireNumericId(
  * sus validaciones deberán configurarse explícitamente aquí.
  */
 async function assertParentBelongsToTenant(
+  executor: TenantDbExecutor,
   table: TenantTable,
   values: TenantValues,
   companyId: number,
@@ -178,7 +202,7 @@ async function assertParentBelongsToTenant(
       "categoryId",
     );
 
-    const [parentCategory] = await db
+    const [parentCategory] = await executor
       .select({
         id: categories.id,
       })
@@ -211,7 +235,7 @@ async function assertParentBelongsToTenant(
       "checkId",
     );
 
-    const [parentCheck] = await db
+    const [parentCheck] = await executor
       .select({
         id: checks.id,
       })
@@ -252,7 +276,7 @@ async function assertParentBelongsToTenant(
       "productId",
     );
 
-    const [parentOrder] = await db
+    const [parentOrder] = await executor
       .select({
         id: orders.id,
       })
@@ -272,7 +296,7 @@ async function assertParentBelongsToTenant(
       );
     }
 
-    const [parentProduct] = await db
+    const [parentProduct] = await executor
       .select({
         id: products.id,
       })
@@ -305,7 +329,7 @@ async function assertParentBelongsToTenant(
       "checkId",
     );
 
-    const [parentCheck] = await db
+    const [parentCheck] = await executor
       .select({
         id: checks.id,
       })
@@ -406,6 +430,7 @@ function sanitizeTenantUpdate(
 
 
 async function assertUpdateParentsBelongToTenant(
+  executor: TenantDbExecutor,
   table: TenantTable,
   values: TenantValues,
   companyId: number,
@@ -432,7 +457,7 @@ async function assertUpdateParentsBelongToTenant(
       "categoryId",
     );
 
-    const [parentCategory] = await db
+    const [parentCategory] = await executor
       .select({
         id: categories.id,
       })
@@ -460,7 +485,9 @@ async function assertUpdateParentsBelongToTenant(
  * TENANT DB
  * ============================================================
  */
-export async function tenantDb() {
+export async function tenantDb(
+  executor: TenantDbExecutor = db,
+) {
   const {
     companyId,
     role,
@@ -537,7 +564,7 @@ export async function tenantDb() {
           : baseWhere,
       );
 
-      const [result] = await db
+      const [result] = await executor
         .select({
           count: count(),
         })
@@ -566,7 +593,7 @@ export async function tenantDb() {
           : baseWhere,
       );
 
-      const [result] = await db
+      const [result] =  await executor
         .select({
           total: sum(column),
         })
@@ -594,7 +621,7 @@ export async function tenantDb() {
           : baseWhere,
       );
 
-      const [result] = await db
+      const [result] =  await executor
         .select({
           exists: count(),
         })
@@ -623,7 +650,7 @@ export async function tenantDb() {
           : baseWhere,
       );
 
-      const rows = await db
+      const rows =  await executor
         .select()
         .from(table)
         .where(where);
@@ -643,7 +670,7 @@ export async function tenantDb() {
       table: T,
       extraWhere?: SQL,
     ): Promise<TenantRow<T>[]> {
-      const rows = await db
+      const rows =  await executor
         .select()
         .from(table)
         .where(
@@ -674,7 +701,7 @@ export async function tenantDb() {
           : baseWhere,
       );
 
-      const rows = await db
+      const rows =  await executor
         .select()
         .from(table)
         .where(where)
@@ -692,7 +719,7 @@ export async function tenantDb() {
       table: T,
       extraWhere?: SQL,
     ): Promise<TenantRow<T> | null> {
-      const rows = await db
+      const rows =  await executor
         .select()
         .from(table)
         .where(
@@ -734,6 +761,7 @@ export async function tenantDb() {
       values: TenantValues,
     ) {
       await assertParentBelongsToTenant(
+        executor,
         table,
         values,
         currentCompanyId,
@@ -748,7 +776,7 @@ export async function tenantDb() {
         };
 
       if (table === categories) {
-        return db
+        return executor
           .insert(categories)
           .values(
             insertValues as typeof categories.$inferInsert,
@@ -757,7 +785,7 @@ export async function tenantDb() {
 
 
       if (table === products) {
-        return db
+        return executor
           .insert(products)
           .values(
             insertValues as typeof products.$inferInsert,
@@ -765,7 +793,7 @@ export async function tenantDb() {
       }
 
       if (table === checks) {
-        return db
+        return executor
           .insert(checks)
           .values(
             insertValues as typeof checks.$inferInsert,
@@ -773,7 +801,7 @@ export async function tenantDb() {
       }
 
       if (table === orders) {
-        return db
+        return executor
           .insert(orders)
           .values(
             insertValues as typeof orders.$inferInsert,
@@ -781,7 +809,7 @@ export async function tenantDb() {
       }
 
       if (table === orderItems) {
-        return db
+        return executor
           .insert(orderItems)
           .values(
             insertValues as typeof orderItems.$inferInsert,
@@ -789,7 +817,7 @@ export async function tenantDb() {
       }
 
       if (table === payments) {
-        return db
+        return executor
           .insert(payments)
           .values(
             insertValues as typeof payments.$inferInsert,
@@ -834,13 +862,14 @@ export async function tenantDb() {
       );
 
       await assertUpdateParentsBelongToTenant(
+        executor,
         table,
         safeValues,
         currentCompanyId,
         isGlobalAdmin,
       );
 
-      return db
+      return  executor
         .update(table)
         .set(safeValues)
         .where(where);
@@ -876,7 +905,7 @@ export async function tenantDb() {
           : baseWhere,
       );
 
-      return db
+      return executor
         .update(table)
         .set({
           deletedAt: new Date(),
@@ -920,7 +949,7 @@ export async function tenantDb() {
         ),
       );
 
-      return db
+      return executor
         .update(table)
         .set({
           deletedAt: null,
@@ -949,7 +978,7 @@ export async function tenantDb() {
           "Force delete requires an explicit where condition.",
         );
       }
-      return db
+      return executor
         .delete(table)
         .where(extraWhere);
     },
