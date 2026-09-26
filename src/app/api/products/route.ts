@@ -99,6 +99,7 @@ export async function POST(request: Request) {
                 : "";
 
         const priceInCents = body.priceInCents;
+        const categoryId = body.categoryId;
 
         if (!name) {
             return NextResponse.json(
@@ -127,10 +128,20 @@ export async function POST(request: Request) {
                 { status: 400 },
             );
         }
+        if (
+            !Number.isInteger(categoryId) ||
+            categoryId <= 0
+        ) {
+            return Response.json(
+                { error: "Valid categoryId is required" },
+                { status: 400 },
+            );
+        }
 
         const tenant = await tenantDb();
 
         await tenant.insert(products, {
+            categoryId,
             name,
             sku,
             priceInCents,
@@ -171,6 +182,19 @@ export async function POST(request: Request) {
                         "A product with this SKU already exists",
                 },
                 { status: 409 },
+            );
+        }
+
+        if (
+            message ===
+            "Category does not belong to current tenant."
+        ) {
+            return Response.json(
+                {
+                    error:
+                        "Category not found or unavailable",
+                },
+                { status: 400 },
             );
         }
 
