@@ -1,5 +1,6 @@
 import {
   and,
+  isNotNull,
   isNull,
   count,
   sum,
@@ -822,6 +823,51 @@ export async function tenantDb() {
         })
         .where(where);
     },
+
+    /**
+ * ========================================================
+ * RESTORE / REACTIVATE
+ * ========================================================
+ *
+ * Reactiva un registro previamente soft-deleted.
+ *
+ * Mantiene tenant isolation y requiere siempre
+ * una condición explícita.
+ */
+    restore(
+      table: TenantTable,
+      extraWhere?: SQL,
+    ) {
+      if (!extraWhere) {
+        throw new Error(
+          "Restore requires an explicit where condition.",
+        );
+      }
+
+      if (!table.deletedAt) {
+        throw new Error(
+          "Restore not supported on this table",
+        );
+      }
+
+      const baseWhere = isNotNull(table.deletedAt);
+
+      const where = buildWhere(
+        table,
+        and(
+          baseWhere,
+          extraWhere,
+        ),
+      );
+
+      return db
+        .update(table)
+        .set({
+          deletedAt: null,
+        })
+        .where(where);
+    },
+
 
     /**
      * ========================================================
