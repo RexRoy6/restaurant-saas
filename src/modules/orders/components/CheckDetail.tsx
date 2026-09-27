@@ -14,6 +14,7 @@ import {
 import { useCheck } from "../hooks/useCheck";
 import CreateOrderModal from "./CreateOrderModal";
 import OrderCard from "./OrderCard";
+import CancelOrderModal from "./CancelOrderModal";
 
 type CheckDetailProps = {
     checkId: number;
@@ -50,6 +51,7 @@ export default function CheckDetail({
         error,
         addOrder,
         changeOrderStatus,
+        cancelExistingOrder,
         clearError,
     } = useCheck(checkId);
 
@@ -57,6 +59,10 @@ export default function CheckDetail({
         showOrderModal,
         setShowOrderModal,
     ] = useState(false);
+    const [
+        cancellingOrderId,
+        setCancellingOrderId,
+    ] = useState<number | null>(null);
 
     if (loading) {
         return (
@@ -251,6 +257,12 @@ export default function CheckDetail({
                                     onStatusChange={
                                         changeOrderStatus
                                     }
+                                    onCancel={(orderId) => {
+                                        clearError();
+                                        setCancellingOrderId(
+                                            orderId,
+                                        );
+                                    }}
                                 />
                             ))}
                         </div>
@@ -273,6 +285,25 @@ export default function CheckDetail({
                         }
                     />
                 )}
+            {cancellingOrderId !== null && (
+                <CancelOrderModal
+                    orderId={
+                        cancellingOrderId
+                    }
+                    saving={saving}
+                    error={error}
+                    onClose={() => {
+                        clearError();
+
+                        setCancellingOrderId(
+                            null,
+                        );
+                    }}
+                    onCancel={
+                        cancelExistingOrder
+                    }
+                />
+            )}
         </>
     );
 

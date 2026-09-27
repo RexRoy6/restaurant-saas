@@ -17,10 +17,15 @@ type OrderCardProps = {
     order: Order;
     saving: boolean;
     readOnly: boolean;
+
     onStatusChange: (
         orderId: number,
         input: UpdateOrderStatusInput,
     ) => Promise<boolean>;
+
+    onCancel: (
+        orderId: number,
+    ) => void;
 };
 
 function formatCurrency(
@@ -155,6 +160,7 @@ export default function OrderCard({
     saving,
     readOnly,
     onStatusChange,
+    onCancel,
 }: OrderCardProps) {
     const cancelled =
         order.status === "CANCELLED";
@@ -163,6 +169,11 @@ export default function OrderCard({
 
     const nextStatusLabel =
         getNextStatusLabel(order.status);
+
+    const canCancel =
+        order.status === "PENDING" ||
+        order.status === "PREPARING" ||
+        order.status === "READY";
 
     return (
         <div
@@ -316,29 +327,49 @@ export default function OrderCard({
                 </div>
             )}
 
+
             {!readOnly &&
-                nextStatus &&
-                nextStatusLabel && (
-                    <div className="mt-4 flex justify-end">
-                        <button
-                            type="button"
-                            disabled={saving}
-                            onClick={() =>
-                                void onStatusChange(
-                                    order.id,
-                                    {
-                                        status: nextStatus,
-                                    },
-                                )
-                            }
-                            className="rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {saving
-                                ? "Actualizando..."
-                                : nextStatusLabel}
-                        </button>
+                (canCancel ||
+                    (nextStatus &&
+                        nextStatusLabel)) && (
+                    <div className="mt-4 flex flex-wrap justify-end gap-3">
+                        {canCancel && (
+                            <button
+                                type="button"
+                                disabled={saving}
+                                onClick={() =>
+                                    onCancel(order.id)
+                                }
+                                className="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                Cancelar orden
+                            </button>
+                        )}
+
+                        {nextStatus &&
+                            nextStatusLabel && (
+                                <button
+                                    type="button"
+                                    disabled={saving}
+                                    onClick={() =>
+                                        void onStatusChange(
+                                            order.id,
+                                            {
+                                                status:
+                                                    nextStatus,
+                                            },
+                                        )
+                                    }
+                                    className="rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {saving
+                                        ? "Actualizando..."
+                                        : nextStatusLabel}
+                                </button>
+                            )}
                     </div>
                 )}
+
 
         </div>
     );
