@@ -44,6 +44,7 @@ export default function CheckDetail({
 }: CheckDetailProps) {
     const {
         check,
+        clearError,
         loading,
         saving,
         error,
@@ -65,7 +66,7 @@ export default function CheckDetail({
         );
     }
 
-    if (error) {
+    if (error && !check) {
         return (
             <div className="space-y-4">
                 <Link
@@ -208,9 +209,10 @@ export default function CheckDetail({
                         {check.status === "OPEN" && (
                             <button
                                 type="button"
-                                onClick={() =>
-                                    setShowOrderModal(true)
-                                }
+                                onClick={() => {
+                                    clearError();
+                                    setShowOrderModal(true);
+                                }}
                                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800"
                             >
                                 <Plus size={17} />
@@ -314,9 +316,11 @@ export default function CheckDetail({
                 check.status === "OPEN" && (
                     <CreateOrderModal
                         saving={saving}
-                        onClose={() =>
-                            setShowOrderModal(false)
-                        }
+                        error={error}
+                        onClose={() => {
+                            clearError();
+                            setShowOrderModal(false);
+                        }}
                         onCreate={
                             handleCreateOrder
                         }

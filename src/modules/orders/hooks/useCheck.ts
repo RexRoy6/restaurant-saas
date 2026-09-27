@@ -1,205 +1,210 @@
 "use client";
 
 import {
-  useCallback,
-  useEffect,
-  useState,
+    useCallback,
+    useEffect,
+    useState,
 } from "react";
 
 import {
-  cancelOrder,
-  createOrder,
-  createPayment,
-  getCheck,
-  updateOrderStatus,
+    cancelOrder,
+    createOrder,
+    createPayment,
+    getCheck,
+    updateOrderStatus,
 } from "../services/orders.service";
 
 import type {
-  CancelOrderInput,
-  Check,
-  CreateOrderInput,
-  CreatePaymentInput,
-  UpdateOrderStatusInput,
+    CancelOrderInput,
+    Check,
+    CreateOrderInput,
+    CreatePaymentInput,
+    UpdateOrderStatusInput,
 } from "../types/order";
 
 export function useCheck(
-  checkId: number | null,
+    checkId: number | null,
 ) {
-  const [check, setCheck] =
-    useState<Check | null>(null);
+    const [check, setCheck] =
+        useState<Check | null>(null);
 
-  const [loading, setLoading] =
-    useState(false);
+    const [loading, setLoading] =
+        useState(false);
 
-  const [saving, setSaving] =
-    useState(false);
+    const [saving, setSaving] =
+        useState(false);
 
-  const [error, setError] =
-    useState<string | null>(null);
-
-  const loadCheck =
-    useCallback(async () => {
-      if (checkId === null) {
-        setCheck(null);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
+    const [error, setError] =
+        useState<string | null>(null);
+    const clearError = () => {
         setError(null);
+    };
 
-        const data =
-          await getCheck(checkId);
 
-        setCheck(data);
-      } catch (error) {
-        setError(
-          error instanceof Error
-            ? error.message
-            : "No se pudo cargar la cuenta",
-        );
-      } finally {
-        setLoading(false);
-      }
-    }, [checkId]);
+    const loadCheck =
+        useCallback(async () => {
+            if (checkId === null) {
+                setCheck(null);
+                setLoading(false);
+                return;
+            }
 
-  useEffect(() => {
-    void loadCheck();
-  }, [loadCheck]);
+            try {
+                setLoading(true);
+                setError(null);
 
-  const addOrder = async (
-    input: CreateOrderInput,
-  ) => {
-    if (checkId === null) {
-      return false;
-    }
+                const data =
+                    await getCheck(checkId);
 
-    try {
-      setSaving(true);
-      setError(null);
+                setCheck(data);
+            } catch (error) {
+                setError(
+                    error instanceof Error
+                        ? error.message
+                        : "No se pudo cargar la cuenta",
+                );
+            } finally {
+                setLoading(false);
+            }
+        }, [checkId]);
 
-      await createOrder(
-        checkId,
-        input,
-      );
+    useEffect(() => {
+        void loadCheck();
+    }, [loadCheck]);
 
-      await loadCheck();
+    const addOrder = async (
+        input: CreateOrderInput,
+    ) => {
+        if (checkId === null) {
+            return false;
+        }
 
-      return true;
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "No se pudo crear la orden",
-      );
+        try {
+            setSaving(true);
+            setError(null);
 
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  };
+            await createOrder(
+                checkId,
+                input,
+            );
 
-  const changeOrderStatus = async (
-    orderId: number,
-    input: UpdateOrderStatusInput,
-  ) => {
-    try {
-      setSaving(true);
-      setError(null);
+            await loadCheck();
 
-      await updateOrderStatus(
-        orderId,
-        input,
-      );
+            return true;
+        } catch (error) {
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : "No se pudo crear la orden",
+            );
 
-      await loadCheck();
+            return false;
+        } finally {
+            setSaving(false);
+        }
+    };
 
-      return true;
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "No se pudo actualizar la orden",
-      );
+    const changeOrderStatus = async (
+        orderId: number,
+        input: UpdateOrderStatusInput,
+    ) => {
+        try {
+            setSaving(true);
+            setError(null);
 
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  };
+            await updateOrderStatus(
+                orderId,
+                input,
+            );
 
-  const cancelExistingOrder = async (
-    orderId: number,
-    input: CancelOrderInput,
-  ) => {
-    try {
-      setSaving(true);
-      setError(null);
+            await loadCheck();
 
-      await cancelOrder(
-        orderId,
-        input,
-      );
+            return true;
+        } catch (error) {
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : "No se pudo actualizar la orden",
+            );
 
-      await loadCheck();
+            return false;
+        } finally {
+            setSaving(false);
+        }
+    };
 
-      return true;
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "No se pudo cancelar la orden",
-      );
+    const cancelExistingOrder = async (
+        orderId: number,
+        input: CancelOrderInput,
+    ) => {
+        try {
+            setSaving(true);
+            setError(null);
 
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  };
+            await cancelOrder(
+                orderId,
+                input,
+            );
 
-  const addPayment = async (
-    input: CreatePaymentInput,
-  ) => {
-    if (checkId === null) {
-      return false;
-    }
+            await loadCheck();
 
-    try {
-      setSaving(true);
-      setError(null);
+            return true;
+        } catch (error) {
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : "No se pudo cancelar la orden",
+            );
 
-      await createPayment(
-        checkId,
-        input,
-      );
+            return false;
+        } finally {
+            setSaving(false);
+        }
+    };
 
-      await loadCheck();
+    const addPayment = async (
+        input: CreatePaymentInput,
+    ) => {
+        if (checkId === null) {
+            return false;
+        }
 
-      return true;
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "No se pudo registrar el pago",
-      );
+        try {
+            setSaving(true);
+            setError(null);
 
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  };
+            await createPayment(
+                checkId,
+                input,
+            );
 
-  return {
-    check,
-    loading,
-    saving,
-    error,
+            await loadCheck();
 
-    loadCheck,
-    addOrder,
-    changeOrderStatus,
-    cancelExistingOrder,
-    addPayment,
-  };
+            return true;
+        } catch (error) {
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : "No se pudo registrar el pago",
+            );
+
+            return false;
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return {
+        check,
+        loading,
+        saving,
+        error,
+
+        loadCheck,
+        addOrder,
+        changeOrderStatus,
+        cancelExistingOrder,
+        addPayment,
+        clearError,
+    };
 }
