@@ -13,6 +13,7 @@ import {
 
 import { useCheck } from "../hooks/useCheck";
 import CreateOrderModal from "./CreateOrderModal";
+import OrderCard from "./OrderCard";
 
 type CheckDetailProps = {
     checkId: number;
@@ -239,72 +240,10 @@ export default function CheckDetail({
                     ) : (
                         <div className="divide-y divide-gray-100">
                             {check.orders.map((order) => (
-                                <div
+                                <OrderCard
                                     key={order.id}
-                                    className="px-5 py-4"
-                                >
-                                    <div className="flex items-center justify-between gap-4">
-                                        <div>
-                                            <p className="font-medium text-gray-900">
-                                                Orden #{order.id}
-                                            </p>
-
-                                            <p className="mt-1 text-xs text-gray-400">
-                                                {formatDate(
-                                                    order.createdAt,
-                                                )}
-                                            </p>
-                                        </div>
-
-                                        <div className="text-right">
-                                            <p className="font-semibold text-gray-900">
-                                                {formatCurrency(
-                                                    order.totalInCents,
-                                                )}
-                                            </p>
-
-                                            <p className="mt-1 text-xs font-medium text-gray-500">
-                                                {order.status}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-4 space-y-2">
-                                        {order.items.map((item) => (
-                                            <div
-                                                key={item.id}
-                                                className="flex items-center justify-between gap-4 text-sm"
-                                            >
-                                                <div className="min-w-0">
-                                                    <span className="text-gray-700">
-                                                        {item.quantity} ×{" "}
-                                                        {item.productName}
-                                                    </span>
-
-                                                    <span className="ml-2 text-xs text-gray-400">
-                                                        {item.categoryName}
-                                                    </span>
-                                                </div>
-
-                                                <span className="shrink-0 text-gray-600">
-                                                    {formatCurrency(
-                                                        item.subtotalInCents,
-                                                    )}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {order.status ===
-                                        "CANCELLED" && (
-                                            <div className="mt-4 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-500">
-                                                Cancelada
-                                                {order.cancellationReason
-                                                    ? `: ${order.cancellationReason}`
-                                                    : ""}
-                                            </div>
-                                        )}
-                                </div>
+                                    order={order}
+                                />
                             ))}
                         </div>
                     )}
