@@ -15,6 +15,7 @@ import { useCheck } from "../hooks/useCheck";
 import CreateOrderModal from "./CreateOrderModal";
 import OrderCard from "./OrderCard";
 import CancelOrderModal from "./CancelOrderModal";
+import PaymentModal from "./PaymentModal";
 
 type CheckDetailProps = {
     checkId: number;
@@ -52,6 +53,7 @@ export default function CheckDetail({
         addOrder,
         changeOrderStatus,
         cancelExistingOrder,
+        addPayment,
         clearError,
     } = useCheck(checkId);
 
@@ -63,6 +65,10 @@ export default function CheckDetail({
         cancellingOrderId,
         setCancellingOrderId,
     ] = useState<number | null>(null);
+    const [
+        showPaymentModal,
+        setShowPaymentModal,
+    ] = useState(false);
 
     if (loading) {
         return (
@@ -198,7 +204,10 @@ export default function CheckDetail({
                             )}
                         </p>
                     </div>
+
+
                 </div>
+
 
 
                 <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
@@ -268,6 +277,22 @@ export default function CheckDetail({
                         </div>
                     )}
                 </div>
+                {check.status === "OPEN" &&
+                    check.remainingInCents > 0 && (
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    clearError();
+                                    setShowPaymentModal(true);
+                                }}
+                                disabled={saving}
+                                className="rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                Cobrar
+                            </button>
+                        </div>
+                    )}
 
             </div>
 
@@ -302,6 +327,20 @@ export default function CheckDetail({
                     onCancel={
                         cancelExistingOrder
                     }
+                />
+            )}
+            {showPaymentModal && (
+                <PaymentModal
+                    remainingInCents={
+                        check.remainingInCents
+                    }
+                    saving={saving}
+                    error={error}
+                    onClose={() => {
+                        clearError();
+                        setShowPaymentModal(false);
+                    }}
+                    onPay={addPayment}
                 />
             )}
         </>
