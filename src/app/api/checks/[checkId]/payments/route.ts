@@ -11,6 +11,7 @@ import {
     checks,
     orders,
     orderItems,
+    payments,
 } from "@/db/schema";
 
 import { tenantDb } from "@/lib/db/tenantDb";
@@ -218,7 +219,86 @@ export async function POST(
                 if (checkTotalInCents <= 0) {
                     throw new Error("NOTHING_TO_PAY");
                 }
+                /*
+ * ==========================================
+ * EXISTING PAYMENTS
+ * ==========================================
+ */
+                const paymentList = await tenant.findMany(
+                    payments,
+                    eq(payments.checkId, check.id),
+                );
 
+                let paidInCents = 0;
+
+                for (const payment of paymentList) {
+                    const nextPaid =
+                        paidInCents +
+                        payment.amountInCents;
+
+                    if (
+                        !Number.isSafeInteger(nextPaid) ||
+                        nextPaid < 0
+                    ) {
+                        throw new Error(
+                            "INVALID_PAID_TOTAL",
+                        );
+                    }
+
+                    paidInCents = nextPaid;
+                }
+
+                /*
+                 * Esta situación no debería existir porque
+                 * nuestro API no permitirá sobrepagos.
+                 *
+                 * Aun así, fallamos de forma segura si los
+                 * datos existentes son inconsistentes.
+                 */
+                if (paidInCents > checkTotalInCents) {
+                    throw new Error(
+                        "INVALID_PAYMENT_STATE",
+                    );
+                }
+
+                const remainingInCents =
+                    checkTotalInCents -
+                    paidInCents;
+
+                if (
+                    !Number.isSafeInteger(
+                        remainingInCents,
+                    ) ||
+                    remainingInCents < 0
+                ) {
+                    throw new Error(
+                        "INVALID_PAYMENT_STATE",
+                    );
+                }
+
+                /*
+                 * Un Check OPEN con saldo 0 sería un estado
+                 * inconsistente: debería haberse cerrado al
+                 * registrar el último pago.
+                 */
+                if (remainingInCents === 0) {
+                    throw new Error(
+                        "INVALID_PAYMENT_STATE",
+                    );
+                }
+
+                /*
+                 * El nuevo pago no puede superar el saldo
+                 * pendiente.
+                 */
+                if (
+                    body.amountInCents >
+                    remainingInCents
+                ) {
+                    throw new Error(
+                        "PAYMENT_EXCEEDS_REMAINING",
+                    );
+                }
                 /*
                  * TEMPORAL:
                  *
@@ -241,8 +321,13 @@ export async function POST(
                     totalInCents:
                         checkTotalInCents,
 
-                    activeOrderCount:
-                        activeOrders.length,
+                    paidInCents,
+
+                    remainingInCents,
+
+                    remainingAfterPaymentInCents:
+                        remainingInCents -
+                        body.amountInCents,
 
                     calculationPassed: true,
                 };
@@ -300,6 +385,30 @@ export async function POST(
             return NextResponse.json(
                 { error: "Invalid check total" },
                 { status: 500 },
+            );
+        }
+        if (
+            message === "INVALID_PAID_TOTAL" ||
+            message === "INVALID_PAYMENT_STATE"
+        ) {
+            return NextResponse.json(
+                {
+                    error: "Invalid payment state",
+                },
+                { status: 500 },
+            );
+        }
+
+        if (
+            message ===
+            "PAYMENT_EXCEEDS_REMAINING"
+        ) {
+            return NextResponse.json(
+                {
+                    error:
+                        "Payment exceeds remaining balance",
+                },
+                { status: 400 },
             );
         }
 
