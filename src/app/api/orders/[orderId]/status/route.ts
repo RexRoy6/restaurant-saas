@@ -124,16 +124,18 @@ export async function PATCH(
                 { status: 409 },
             );
         }
+        await tenant.update(
+            orders,
+            {
+                status: body.status,
+            },
+            eq(orders.id, order.id),
+        );
 
-        /*
-         * TEMPORAL:
-         * todavía no actualizamos la Order.
-         */
         return NextResponse.json({
-            orderId: order.id,
-            currentStatus: order.status,
-            requestedStatus: body.status,
-            transitionValid: true,
+            id: order.id,
+            previousStatus: order.status,
+            status: body.status,
         });
     } catch (error) {
         const message =
