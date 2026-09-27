@@ -300,41 +300,122 @@ export async function POST(
                     );
                 }
                 /*
-                 * TEMPORAL:
-                 *
-                 * 11.4 solamente demuestra que podemos
-                 * obtener el total económico real.
-                 *
-                 * Todavía NO insertamos Payment.
+ * ==========================================
+ * CREATE PAYMENT
+ * ==========================================
+ *
+ * companyId viene de tenantDb.
+ * paidAt viene de la DB.
+ *
+ * El cliente únicamente controla:
+ * - amountInCents
+ * - paymentMethod
+ */
+                const paymentResult = await tenant.insert(
+                    payments,
+                    {
+                        checkId: check.id,
+                        amountInCents:
+                            body.amountInCents,
+                        paymentMethod:
+                            body.paymentMethod,
+                    },
+                );
+
+                const paymentId = Number(
+                    paymentResult[0].insertId,
+                );
+
+                if (
+                    !Number.isInteger(paymentId) ||
+                    paymentId <= 0
+                ) {
+                    throw new Error(
+                        "PAYMENT_CREATION_FAILED",
+                    );
+                }
+
+                /*
+                 * ==========================================
+                 * NEW ECONOMIC STATE
+                 * ==========================================
+                 */
+                const newPaidInCents =
+                    paidInCents +
+                    body.amountInCents;
+
+                const newRemainingInCents =
+                    checkTotalInCents -
+                    newPaidInCents;
+
+                if (
+                    !Number.isSafeInteger(
+                        newPaidInCents,
+                    ) ||
+                    !Number.isSafeInteger(
+                        newRemainingInCents,
+                    ) ||
+                    newRemainingInCents < 0
+                ) {
+                    throw new Error(
+                        "INVALID_PAYMENT_STATE",
+                    );
+                }
+
+                /*
+                 * ==========================================
+                 * CLOSE CHECK IF FULLY PAID
+                 * ==========================================
+                 */
+                let finalCheckStatus:
+                    | "OPEN"
+                    | "CLOSED" = "OPEN";
+
+                if (newRemainingInCents === 0) {
+                    await tenant.update(
+                        checks,
+                        {
+                            status: "CLOSED",
+                            closedAt: new Date(),
+                        },
+                        eq(checks.id, check.id),
+                    );
+
+                    finalCheckStatus = "CLOSED";
+                }
+
+                /*
+                 * Si cualquier cosa anterior lanzó un error,
+                 * la transaction hará rollback también del
+                 * Payment.
                  */
                 return {
-                    checkId: check.id,
-                    status: check.status,
-
-                    requestedPayment: {
+                    payment: {
+                        id: paymentId,
                         amountInCents:
                             body.amountInCents,
                         paymentMethod:
                             body.paymentMethod,
                     },
 
-                    totalInCents:
-                        checkTotalInCents,
-
-                    paidInCents,
-
-                    remainingInCents,
-
-                    remainingAfterPaymentInCents:
-                        remainingInCents -
-                        body.amountInCents,
-
-                    calculationPassed: true,
+                    check: {
+                        id: check.id,
+                        status: finalCheckStatus,
+                        totalInCents:
+                            checkTotalInCents,
+                        paidInCents:
+                            newPaidInCents,
+                        remainingInCents:
+                            newRemainingInCents,
+                    },
                 };
             },
         );
 
-        return NextResponse.json(result);
+        return NextResponse.json(
+            result,
+            { status: 201 },
+        );
 
 
     } catch (error) {
@@ -409,6 +490,18 @@ export async function POST(
                         "Payment exceeds remaining balance",
                 },
                 { status: 400 },
+            );
+        }
+        if (
+            message ===
+            "PAYMENT_CREATION_FAILED"
+        ) {
+            return NextResponse.json(
+                {
+                    error:
+                        "Could not create payment",
+                },
+                { status: 500 },
             );
         }
 
