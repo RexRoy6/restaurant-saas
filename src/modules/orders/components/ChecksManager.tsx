@@ -10,6 +10,7 @@ import { useChecks } from "../hooks/useChecks";
 import { useState } from "react";
 
 import CreateCheckModal from "./CreateCheckModal";
+import Link from "next/link";
 
 function formatDate(
     value: string,
@@ -123,9 +124,9 @@ export default function ChecksManager() {
                 ) : (
                     <div className="divide-y divide-gray-100">
                         {openChecks.map((check) => (
-                            <button
+                            <Link
                                 key={check.id}
-                                type="button"
+                                href={`/company/orders/${check.id}`}
                                 className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-gray-50"
                             >
                                 <div className="min-w-0">
@@ -158,7 +159,7 @@ export default function ChecksManager() {
                                     size={18}
                                     className="shrink-0 text-gray-400"
                                 />
-                            </button>
+                            </Link>
                         ))}
                     </div>
                 )}
