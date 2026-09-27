@@ -4,9 +4,18 @@ export interface Company {
   slug: string;
   currency: "MXN";
   timezoneId: number;
+
+  timezone?: Timezone;
+
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+}
+
+export interface Timezone {
+  id: number;
+  name: string;
+  label: string;
 }
 
 export interface User {

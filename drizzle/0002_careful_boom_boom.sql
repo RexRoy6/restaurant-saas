@@ -1,0 +1,1 @@
+ALTER TABLE `order_items` ADD `category_name` varchar(120) NOT NULL;

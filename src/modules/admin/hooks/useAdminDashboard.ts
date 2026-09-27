@@ -72,33 +72,38 @@ export function useAdminDashboard() {
 
   /* crear empresa */
   const handleCreateCompany = async () => {
-    if (!newCompanyName.trim()) {
-      setError("El nombre de la empresa es obligatorio");
-      return;
-    }
-    if (!newCompanyTimezoneId) {
-      setError("La zona horaria es obligatoria");
-      return;
-    }
+  if (!newCompanyName.trim()) {
+    setError("El nombre de la empresa es obligatorio");
+    return false;
+  }
 
-    try {
-      setCreating(true);
+  if (!newCompanyTimezoneId) {
+    setError("La zona horaria es obligatoria");
+    return false;
+  }
 
-      await createCompany(
-        newCompanyName,
-        newCompanyTimezoneId,
-      );
+  try {
+    setCreating(true);
+    setError("");
 
-      setNewCompanyName("");
-      setNewCompanyTimezoneId(null);
+    await createCompany(
+      newCompanyName,
+      newCompanyTimezoneId,
+    );
 
-      await loadCompanies();
-    } catch {
-      setError("Error al crear empresa");
-    } finally {
-      setCreating(false);
-    }
-  };
+    setNewCompanyName("");
+    setNewCompanyTimezoneId(null);
+
+    await loadCompanies();
+
+    return true;
+  } catch {
+    setError("Error al crear empresa");
+    return false;
+  } finally {
+    setCreating(false);
+  }
+};
 
   useEffect(() => {
     loadUser();

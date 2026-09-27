@@ -32,7 +32,7 @@ export default function CompanyHeaderCard({
         {/* COMPANY INFO */}
         <div style={companyStyles.companyInfo}>
 
-          
+
 
           <div>
             <div
@@ -64,6 +64,9 @@ export default function CompanyHeaderCard({
               </span>
             </div>
 
+
+
+
             {isSuspended && company.deletedAt && (
               <p style={companyStyles.companyMeta}>
                 Suspendida el{" "}
@@ -72,6 +75,8 @@ export default function CompanyHeaderCard({
             )}
           </div>
         </div>
+
+
 
         {/* ACTIONS */}
         <div style={companyStyles.actions}>
@@ -144,6 +149,126 @@ export default function CompanyHeaderCard({
             )
           )}
 
+        </div>
+
+
+
+      </div>
+
+      <div
+        style={{
+          marginTop: "24px",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: "20px",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: "12px",
+              color: "#6b7280",
+              marginBottom: "4px",
+            }}
+          >
+            ID
+          </div>
+
+          <div style={{ fontWeight: 500 }}>
+            {company.id}
+          </div>
+        </div>
+
+        <div>
+          <div
+            style={{
+              fontSize: "12px",
+              color: "#6b7280",
+              marginBottom: "4px",
+            }}
+          >
+            Slug
+          </div>
+
+          <div style={{ fontWeight: 500 }}>
+            {company.slug || "—"}
+          </div>
+        </div>
+
+        <div>
+          <div
+            style={{
+              fontSize: "12px",
+              color: "#6b7280",
+              marginBottom: "4px",
+            }}
+          >
+            Moneda
+          </div>
+
+          <div style={{ fontWeight: 500 }}>
+            {company.currency}
+          </div>
+        </div>
+
+        <div>
+          <div
+            style={{
+              fontSize: "12px",
+              color: "#6b7280",
+              marginBottom: "4px",
+            }}
+          >
+            Zona horaria
+          </div>
+
+          <div style={{ fontWeight: 500 }}>
+            {company.timezone?.label ?? "—"}
+          </div>
+
+          {company.timezone?.name && (
+            <div
+              style={{
+                fontSize: "12px",
+                color: "#6b7280",
+                marginTop: "2px",
+              }}
+            >
+              {company.timezone.name}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div
+            style={{
+              fontSize: "12px",
+              color: "#6b7280",
+              marginBottom: "4px",
+            }}
+          >
+            Fecha de creación
+          </div>
+
+          <div style={{ fontWeight: 500 }}>
+            {new Date(company.createdAt).toLocaleDateString("es-MX")}
+          </div>
+        </div>
+
+        <div>
+          <div
+            style={{
+              fontSize: "12px",
+              color: "#6b7280",
+              marginBottom: "4px",
+            }}
+          >
+            Última actualización
+          </div>
+
+          <div style={{ fontWeight: 500 }}>
+            {new Date(company.updatedAt).toLocaleDateString("es-MX")}
+          </div>
         </div>
       </div>
     </div>
