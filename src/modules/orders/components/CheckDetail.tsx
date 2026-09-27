@@ -264,11 +264,16 @@ export default function CheckDetail({
                                     readOnly={
                                         check.status !== "OPEN"
                                     }
+                                    canCancel={
+                                        check.status === "OPEN" &&
+                                        check.paidInCents === 0
+                                    }
                                     onStatusChange={
                                         changeOrderStatus
                                     }
                                     onCancel={(orderId) => {
                                         clearError();
+
                                         setCancellingOrderId(
                                             orderId,
                                         );
@@ -295,9 +300,9 @@ export default function CheckDetail({
                         </div>
                     )}
 
-                    <PaymentsHistory
-  payments={check.payments}
-/>
+                <PaymentsHistory
+                    payments={check.payments}
+                />
 
             </div>
 
