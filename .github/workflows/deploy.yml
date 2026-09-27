@@ -1,4 +1,4 @@
-name: Deploy crmsandiasoft Next.js (Full Install)
+name: Deploy restaurant-saasNext.js (Full Install)
 
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
       run: |
         set -e
         COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}
-        RELEASE_DIR="/opt/crmsandiasoft/releases/${COMMIT_SHORT_SHA}"
+        RELEASE_DIR="/opt/restaurant-saas/releases/${COMMIT_SHORT_SHA}"
 
         # Create release directory
         ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "
@@ -41,7 +41,7 @@ jobs:
 
         # Link env file
         ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "
-          ln -nfs /opt/crmsandiasoft/.env.production ${RELEASE_DIR}/.env
+          ln -nfs /opt/restaurant-saas/.env.production ${RELEASE_DIR}/.env
         "
 
         # Install + build on VPS
@@ -53,20 +53,20 @@ jobs:
 
         # Switch release
         ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "
-          cd /opt/crmsandiasoft
+          cd /opt/restaurant-saas
           ln -nfs releases/${COMMIT_SHORT_SHA} current
         "
 
         # Restart app
         ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "
-          cd /opt/crmsandiasoft/current
-          pm2 delete crmsandiasoft || true
+          cd /opt/restaurant-saas/current
+          pm2 delete restaurant-saas || true
           pm2 start ecosystem.config.js
           pm2 save
         "
 
         # Keep only last 5 releases
         ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "
-          cd /opt/crmsandiasoft
+          cd /opt/restaurant-saas
           ls -1dt releases/* | tail -n +6 | xargs rm -rf || true
         "
