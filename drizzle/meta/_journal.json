@@ -15,6 +15,13 @@
       "when": 1790385404725,
       "tag": "0001_absent_sebastian_shaw",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1790454970467,
+      "tag": "0002_careful_boom_boom",
+      "breakpoints": true
     }
   ]
 }

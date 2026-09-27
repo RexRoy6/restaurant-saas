@@ -354,6 +354,10 @@ export const orderItems = mysqlTable(
       length: 100,
     }).notNull(),
 
+    categoryName: varchar("category_name", {
+  length: 120,
+}).notNull(),
+
     unitPriceInCents: bigint(
       "unit_price_in_cents",
       { mode: "number" },
