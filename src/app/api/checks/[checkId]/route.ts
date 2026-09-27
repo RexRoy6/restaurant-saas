@@ -8,6 +8,7 @@ import {
   checks,
   orders,
   orderItems,
+  payments
 } from "@/db/schema";
 
 import { requireAuth } from "@/lib/auth/requireAuth";
@@ -81,21 +82,7 @@ export async function GET(
       eq(orders.checkId, check.id),
     );
 
-    /*
-     * Un Check nuevo puede no tener Orders.
-     */
-    if (orderList.length === 0) {
-      return NextResponse.json({
-        id: check.id,
-        name: check.name,
-        note: check.note,
-        status: check.status,
-        closedAt: check.closedAt,
-        createdAt: check.createdAt,
-        orders: [],
-        totalInCents: 0,
-      });
-    }
+
 
     /*
      * ============================================
@@ -106,11 +93,16 @@ export async function GET(
       (order) => order.id,
     );
 
-    const itemList = await tenant.findMany(
-      orderItems,
-      inArray(orderItems.orderId, orderIds),
-    );
-
+    const itemList =
+      orderIds.length > 0
+        ? await tenant.findMany(
+          orderItems,
+          inArray(
+            orderItems.orderId,
+            orderIds,
+          ),
+        )
+        : [];
     /*
      * ============================================
      * GROUP ITEMS BY ORDER
@@ -225,6 +217,86 @@ export async function GET(
       checkTotalInCents = nextTotal;
     }
 
+    /*
+ * ============================================
+ * PAYMENTS
+ * ============================================
+ */
+    const paymentList = await tenant.findMany(
+      payments,
+      eq(payments.checkId, check.id),
+    );
+
+    let paidInCents = 0;
+
+    const responsePayments = paymentList.map(
+      (payment) => {
+        const nextPaid =
+          paidInCents +
+          payment.amountInCents;
+
+        if (
+          !Number.isSafeInteger(nextPaid) ||
+          nextPaid < 0
+        ) {
+          throw new Error(
+            "INVALID_PAYMENT_TOTAL",
+          );
+        }
+
+        paidInCents = nextPaid;
+
+        return {
+          id: payment.id,
+          amountInCents:
+            payment.amountInCents,
+          paymentMethod:
+            payment.paymentMethod,
+          paidAt: payment.paidAt,
+        };
+      },
+    );
+
+    /*
+     * ============================================
+     * REMAINING
+     * ============================================
+     */
+    if (paidInCents > checkTotalInCents) {
+      throw new Error(
+        "INVALID_PAYMENT_STATE",
+      );
+    }
+
+    const remainingInCents =
+      checkTotalInCents -
+      paidInCents;
+
+    if (
+      !Number.isSafeInteger(
+        remainingInCents,
+      ) ||
+      remainingInCents < 0
+    ) {
+      throw new Error(
+        "INVALID_PAYMENT_STATE",
+      );
+    }
+
+    // return NextResponse.json({
+    //   id: check.id,
+    //   name: check.name,
+    //   note: check.note,
+    //   status: check.status,
+    //   closedAt: check.closedAt,
+    //   createdAt: check.createdAt,
+
+    //   orders: responseOrders,
+
+    //   totalInCents:
+    //     checkTotalInCents,
+    // });
+
     return NextResponse.json({
       id: check.id,
       name: check.name,
@@ -235,9 +307,17 @@ export async function GET(
 
       orders: responseOrders,
 
+      payments: responsePayments,
+
       totalInCents:
         checkTotalInCents,
+
+      paidInCents,
+
+      remainingInCents,
     });
+
+
   } catch (error) {
     const message =
       error instanceof Error
@@ -261,6 +341,20 @@ export async function GET(
     if (message === "INVALID_CHECK_TOTAL") {
       return NextResponse.json(
         { error: "Invalid check total" },
+        { status: 500 },
+      );
+    }
+    if (
+      message ===
+      "INVALID_PAYMENT_TOTAL" ||
+      message ===
+      "INVALID_PAYMENT_STATE"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Invalid payment state",
+        },
         { status: 500 },
       );
     }
