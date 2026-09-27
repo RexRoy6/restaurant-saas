@@ -1,6 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
 
 import { requireAuth } from "@/lib/auth/requireAuth";
+import { getCompanyTimezone } from "@/modules/sales/server/getCompanyTimezone";
+import { getSalesPeriod } from "@/modules/sales/utils/getSalesPeriod";
 import { parseSalesPeriod } from "@/modules/sales/utils/parseSalesPeriod";
 
 export async function GET(
@@ -22,15 +27,29 @@ export async function GET(
       );
     }
 
-    const period = parseSalesPeriod(
+    const preset = parseSalesPeriod(
       request.nextUrl.searchParams.get(
         "period",
       ),
     );
 
+    const timezone =
+      await getCompanyTimezone(
+        auth.companyId,
+      );
+
+    const period = getSalesPeriod(
+      preset,
+      timezone,
+    );
+
     return NextResponse.json({
-      period,
-      companyId: auth.companyId,
+      period: {
+        preset: period.preset,
+        timezone: period.timezone,
+        from: period.from.toISOString(),
+        to: period.to.toISOString(),
+      },
     });
   } catch (error) {
     const message =
