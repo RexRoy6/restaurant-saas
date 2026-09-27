@@ -45,11 +45,12 @@ export default function CheckDetail({
 }: CheckDetailProps) {
     const {
         check,
-        clearError,
         loading,
         saving,
         error,
         addOrder,
+        changeOrderStatus,
+        clearError,
     } = useCheck(checkId);
 
     const [
@@ -243,6 +244,13 @@ export default function CheckDetail({
                                 <OrderCard
                                     key={order.id}
                                     order={order}
+                                    saving={saving}
+                                    readOnly={
+                                        check.status !== "OPEN"
+                                    }
+                                    onStatusChange={
+                                        changeOrderStatus
+                                    }
                                 />
                             ))}
                         </div>
