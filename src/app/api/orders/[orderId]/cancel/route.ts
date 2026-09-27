@@ -4,7 +4,10 @@ import {
     eq,
 } from "drizzle-orm";
 
-import { orders } from "@/db/schema";
+import {
+    orders,
+    payments,
+} from "@/db/schema";
 import { requireAuth } from "@/lib/auth/requireAuth";
 import { tenantDb } from "@/lib/db/tenantDb";
 
@@ -54,6 +57,7 @@ export async function POST(
                 { status: 400 },
             );
         }
+
 
         const reason =
             "reason" in body &&
@@ -157,6 +161,38 @@ export async function POST(
                 { status: 409 },
             );
         }
+        /*
+ * ============================================
+ * PAYMENT PROTECTION
+ * ============================================
+ *
+ * Phase 1:
+ *
+ * Si el Check ya recibió al menos un pago,
+ * ninguna de sus Orders puede cancelarse.
+ *
+ * Esto evita estados económicos inválidos
+ * mientras todavía no tenemos refunds.
+ */
+        const existingPayment =
+            await tenant.findFirst(
+                payments,
+                eq(
+                    payments.checkId,
+                    order.checkId,
+                ),
+            );
+
+        if (existingPayment) {
+            return NextResponse.json(
+                {
+                    error:
+                        "Orders cannot be cancelled after a payment has been registered",
+                },
+                { status: 409 },
+            );
+        }
+
 
         /*
          * ============================================

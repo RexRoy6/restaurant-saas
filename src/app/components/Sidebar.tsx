@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home,Package, Users, Calendar, FileText, CreditCard,
-  Briefcase, AlarmClock, Settings, Star,
+  Home, Package, FileText, Settings,
   ChevronLeft, ChevronRight
 } from "lucide-react";
 import { UserRole } from "@/db/schema";
@@ -15,6 +14,11 @@ const menu = [
     label: "Inicio",
     href: "/company",
     icon: Home,
+  },
+  {
+    label: "Órdenes",
+    href: "/company/orders",
+    icon: FileText,
   },
   {
     label: "Productos",
@@ -28,12 +32,12 @@ const menu = [
   },
 ];
 
-export default function Sidebar({ 
-  collapsed, 
+export default function Sidebar({
+  collapsed,
   role,
   onToggle
-}: { 
-  collapsed: boolean; 
+}: {
+  collapsed: boolean;
   role: UserRole;
   onToggle: () => void;
 }) {
@@ -48,17 +52,16 @@ export default function Sidebar({
         transition-all duration-300 ease-in-out
         flex flex-col overflow-hidden
         w-[250px] 
-        ${collapsed 
-          ? "-translate-x-full md:translate-x-0 md:w-[80px]" 
+        ${collapsed
+          ? "-translate-x-full md:translate-x-0 md:w-[80px]"
           : "translate-x-0"
         }
       `}
     >
-      {/* Cabecera del Sidebar: Isotipo + Dashboard + Colapsar */} 
-      <div 
-        className={`h-[60px] flex items-center shrink-0 border-b border-[var(--border)] transition-all duration-300 ${
-          collapsed ? "justify-center gap-2 px-2" : "justify-between px-5"
-        }`}
+      {/* Cabecera del Sidebar: Isotipo + Dashboard + Colapsar */}
+      <div
+        className={`h-[60px] flex items-center shrink-0 border-b border-[var(--border)] transition-all duration-300 ${collapsed ? "justify-center gap-2 px-2" : "justify-between px-5"
+          }`}
       >
         <div className={`flex items-center overflow-hidden transition-all duration-200 ${collapsed ? "gap-0" : "gap-3"}`}>
           {/* Añadimos shrink-0 aquí para proteger el contenedor */}
@@ -70,15 +73,14 @@ export default function Sidebar({
               className="h-8 w-8 object-contain shrink-0 transition-transform duration-200"
             />
           </span>
-          <span 
-            className={`font-semibold text-[#111827] tracking-wide transition-all duration-200 ${
-              collapsed ? "opacity-0 w-0 hidden" : "opacity-100"
-            }`}
+          <span
+            className={`font-semibold text-[#111827] tracking-wide transition-all duration-200 ${collapsed ? "opacity-0 w-0 hidden" : "opacity-100"
+              }`}
           >
             Dashboard
           </span>
         </div>
-        
+
         {/* Botón discreto visible solo en escritorio (protegido con shrink-0) */}
         <button
           onClick={onToggle}
@@ -94,7 +96,15 @@ export default function Sidebar({
         <nav className="flex flex-col gap-2">
           {visibleMenu.map((item) => {
             const Icon = item.icon;
-            const active = pathname === item.href;
+            const active =
+              pathname === item.href ||
+              (
+                item.href !== "/company" &&
+                pathname.startsWith(
+                  `${item.href}/`,
+                )
+              );
+
 
             return (
               <Link
@@ -104,8 +114,8 @@ export default function Sidebar({
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group
                   ${collapsed ? "justify-center md:px-0" : "justify-start"}
-                  ${active 
-                    ? "bg-[#111827] text-white" 
+                  ${active
+                    ? "bg-[#111827] text-white"
                     : "bg-transparent text-gray-500 hover:text-black hover:bg-gray-100"
                   }
                 `}
