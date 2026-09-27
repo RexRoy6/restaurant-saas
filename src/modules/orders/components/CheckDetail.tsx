@@ -16,6 +16,7 @@ import CreateOrderModal from "./CreateOrderModal";
 import OrderCard from "./OrderCard";
 import CancelOrderModal from "./CancelOrderModal";
 import PaymentModal from "./PaymentModal";
+import PaymentsHistory from "./PaymentsHistory";
 
 type CheckDetailProps = {
     checkId: number;
@@ -293,6 +294,10 @@ export default function CheckDetail({
                             </button>
                         </div>
                     )}
+
+                    <PaymentsHistory
+  payments={check.payments}
+/>
 
             </div>
 
