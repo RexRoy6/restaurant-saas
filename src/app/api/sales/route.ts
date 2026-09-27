@@ -11,10 +11,16 @@ import {
     and,
     eq,
     gte,
+    inArray,
     lt,
+    ne,
 } from "drizzle-orm";
 
-import { checks } from "@/db/schema";
+import {
+    checks,
+    orders,
+    orderItems,
+} from "@/db/schema";
 import { tenantDb } from "@/lib/db/tenantDb";
 
 export async function GET(
@@ -53,15 +59,71 @@ export async function GET(
         );
         const tenant = await tenantDb();
 
-        const paidChecks = await tenant.count(
-            checks,
-            and(
-                eq(checks.status, "CLOSED"),
-                gte(checks.closedAt, period.from),
-                lt(checks.closedAt, period.to),
-            ),
-        );
+        const closedChecks =
+            await tenant.findMany(
+                checks,
+                and(
+                    eq(checks.status, "CLOSED"),
+                    gte(checks.closedAt, period.from),
+                    lt(checks.closedAt, period.to),
+                ),
+            );
 
+        const paidChecks = closedChecks.length;
+
+        let totalSalesInCents = 0;
+
+        if (closedChecks.length > 0) {
+            const checkIds = closedChecks.map(
+                (check) => check.id,
+            );
+
+            const activeOrders =
+                await tenant.findMany(
+                    orders,
+                    and(
+                        inArray(
+                            orders.checkId,
+                            checkIds,
+                        ),
+                        ne(
+                            orders.status,
+                            "CANCELLED",
+                        ),
+                    ),
+                );
+
+            if (activeOrders.length > 0) {
+                const orderIds = activeOrders.map(
+                    (order) => order.id,
+                );
+
+                const items = await tenant.findMany(
+                    orderItems,
+                    inArray(
+                        orderItems.orderId,
+                        orderIds,
+                    ),
+                );
+
+                for (const item of items) {
+                    const nextTotal =
+                        totalSalesInCents +
+                        item.subtotalInCents;
+
+                    if (
+                        !Number.isSafeInteger(nextTotal) ||
+                        nextTotal < 0
+                    ) {
+                        throw new Error(
+                            "INVALID_SALES_TOTAL",
+                        );
+                    }
+
+                    totalSalesInCents = nextTotal;
+                }
+            }
+        }
 
         return NextResponse.json({
             period: {
@@ -70,6 +132,7 @@ export async function GET(
                 from: period.from.toISOString(),
                 to: period.to.toISOString(),
             },
+            totalSalesInCents,
             paidChecks,
         });
     } catch (error) {
