@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-
 import {
     ORDER_STATUSES,
+    orders,
     type OrderStatus,
 } from "@/db/schema";
-
 import { requireAuth } from "@/lib/auth/requireAuth";
+import { eq } from "drizzle-orm";
+import { tenantDb } from "@/lib/db/tenantDb";
 
 const NORMAL_TRANSITIONS: Partial<
     Record<OrderStatus, OrderStatus>
@@ -93,16 +94,46 @@ export async function PATCH(
             );
         }
 
+        const tenant = await tenantDb();
+
+        const order = await tenant.findFirst(
+            orders,
+            eq(orders.id, orderId),
+        );
+
+        if (!order) {
+            return NextResponse.json(
+                { error: "Order not found" },
+                { status: 404 },
+            );
+        }
+
+        const expectedNextStatus =
+            NORMAL_TRANSITIONS[order.status];
+
+        if (
+            !expectedNextStatus ||
+            body.status !== expectedNextStatus
+        ) {
+            return NextResponse.json(
+                {
+                    error: "Invalid order status transition",
+                    currentStatus: order.status,
+                    requestedStatus: body.status,
+                },
+                { status: 409 },
+            );
+        }
+
         /*
-         * TEMPORAL.
-         *
-         * En 10.5-A2 cargaremos la Order actual
-         * y comprobaremos la transición contra
-         * NORMAL_TRANSITIONS.
+         * TEMPORAL:
+         * todavía no actualizamos la Order.
          */
         return NextResponse.json({
-            orderId,
+            orderId: order.id,
+            currentStatus: order.status,
             requestedStatus: body.status,
+            transitionValid: true,
         });
     } catch (error) {
         const message =
