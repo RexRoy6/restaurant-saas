@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-
-import { requireAuth } from "@/lib/auth/requireAuth";
-import { eq } from "drizzle-orm";
+import {
+    and,
+    eq,
+} from "drizzle-orm";
 
 import { orders } from "@/db/schema";
+import { requireAuth } from "@/lib/auth/requireAuth";
 import { tenantDb } from "@/lib/db/tenantDb";
 
 export async function POST(
@@ -79,8 +81,15 @@ export async function POST(
             );
         }
 
+
+
         const tenant = await tenantDb();
 
+        /*
+         * ============================================
+         * ORDER
+         * ============================================
+         */
         const order = await tenant.findFirst(
             orders,
             eq(orders.id, orderId),
@@ -94,8 +103,20 @@ export async function POST(
         }
 
         /*
-         * DELIVERED es un estado final.
-         * Una orden ya entregada no puede cancelarse.
+         * ============================================
+         * CANCELLATION RULES
+         * ============================================
+         *
+         * Permitimos:
+         *
+         * PENDING   → CANCELLED
+         * PREPARING → CANCELLED
+         * READY     → CANCELLED
+         *
+         * No permitimos:
+         *
+         * DELIVERED → CANCELLED
+         * CANCELLED → CANCELLED
          */
         if (order.status === "DELIVERED") {
             return NextResponse.json(
@@ -107,10 +128,6 @@ export async function POST(
             );
         }
 
-        /*
-         * CANCELLED también es final.
-         * No permitimos cancelar dos veces.
-         */
         if (order.status === "CANCELLED") {
             return NextResponse.json(
                 {
@@ -121,21 +138,73 @@ export async function POST(
         }
 
         /*
-         * En este punto únicamente pueden llegar:
+         * Defensa adicional.
          *
-         * PENDING
-         * PREPARING
-         * READY
-         *
-         * Todavía NO hacemos UPDATE.
+         * Si en el futuro agregamos otro estado al enum,
+         * no queremos que automáticamente se vuelva
+         * cancelable.
          */
+        if (
+            order.status !== "PENDING" &&
+            order.status !== "PREPARING" &&
+            order.status !== "READY"
+        ) {
+            return NextResponse.json(
+                {
+                    error:
+                        "Order cannot be cancelled from its current status",
+                },
+                { status: 409 },
+            );
+        }
+
+        /*
+         * ============================================
+         * CANCEL ORDER
+         * ============================================
+         *
+         * Importante:
+         *
+         * El WHERE también contiene el status que
+         * acabamos de leer.
+         *
+         * Así evitamos cambiar a CANCELLED una Order
+         * cuyo estado haya cambiado entre el SELECT
+         * anterior y este UPDATE.
+         */
+        const updateResult = await tenant.update(
+            orders,
+            {
+                status: "CANCELLED",
+                cancelledAt: new Date(),
+                cancelledBy: auth.userId,
+                cancellationReason: reason,
+            },
+            and(
+                eq(orders.id, order.id),
+                eq(orders.status, order.status),
+            ),
+        );
+
+        const affectedRows =
+            updateResult[0].affectedRows;
+
+        if (affectedRows !== 1) {
+            return NextResponse.json(
+                {
+                    error:
+                        "Order status changed before cancellation",
+                },
+                { status: 409 },
+            );
+        }
+
         return NextResponse.json({
-            orderId: order.id,
-            currentStatus: order.status,
-            requestedStatus: "CANCELLED",
-            reason,
+            id: order.id,
+            previousStatus: order.status,
+            status: "CANCELLED",
             cancelledBy: auth.userId,
-            cancellationAllowed: true,
+            cancellationReason: reason,
         });
 
 
