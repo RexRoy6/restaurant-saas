@@ -17,6 +17,7 @@ type OrderCardProps = {
     order: Order;
     saving: boolean;
     readOnly: boolean;
+    canCancel: boolean;
 
     onStatusChange: (
         orderId: number,
@@ -159,6 +160,7 @@ export default function OrderCard({
     order,
     saving,
     readOnly,
+    canCancel,
     onStatusChange,
     onCancel,
 }: OrderCardProps) {
@@ -170,10 +172,13 @@ export default function OrderCard({
     const nextStatusLabel =
         getNextStatusLabel(order.status);
 
-    const canCancel =
+    const hasCancellableStatus =
         order.status === "PENDING" ||
         order.status === "PREPARING" ||
         order.status === "READY";
+    const showCancelAction =
+        canCancel &&
+        hasCancellableStatus;
 
     return (
         <div
@@ -329,11 +334,11 @@ export default function OrderCard({
 
 
             {!readOnly &&
-                (canCancel ||
+                (showCancelAction ||
                     (nextStatus &&
                         nextStatusLabel)) && (
                     <div className="mt-4 flex flex-wrap justify-end gap-3">
-                        {canCancel && (
+                        {showCancelAction && (
                             <button
                                 type="button"
                                 disabled={saving}
@@ -355,8 +360,7 @@ export default function OrderCard({
                                         void onStatusChange(
                                             order.id,
                                             {
-                                                status:
-                                                    nextStatus,
+                                                status: nextStatus,
                                             },
                                         )
                                     }
