@@ -22,6 +22,10 @@ import {
     orderItems,
 } from "@/db/schema";
 import { tenantDb } from "@/lib/db/tenantDb";
+import type {
+    SalesSummary,
+} from "@/modules/sales/types/sales";
+
 
 type ProductSales = {
     productId: number;
@@ -84,6 +88,8 @@ export async function GET(
         let productsSold = 0;
         const productsMap =
             new Map<number, ProductSales>();
+
+
 
         if (closedChecks.length > 0) {
             const checkIds = closedChecks.map(
@@ -222,8 +228,7 @@ export async function GET(
                 product.totalInCents,
         }));
 
-
-        return NextResponse.json({
+        const summary: SalesSummary = {
             period: {
                 preset: period.preset,
                 timezone: period.timezone,
@@ -234,7 +239,9 @@ export async function GET(
             paidChecks,
             productsSold,
             products,
-        });
+        };
+
+        return NextResponse.json(summary);
     } catch (error) {
         const message =
             error instanceof Error

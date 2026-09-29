@@ -15,3 +15,23 @@ export type SalesPeriodRange = {
   from: Date;
   to: Date;
 };
+
+export type SalesProductSummary = {
+  productId: number;
+  productName: string;
+  quantity: number;
+  totalInCents: number;
+};
+
+export type SalesSummary = {
+  period: {
+    preset: SalesPeriod;
+    timezone: string;
+    from: string;
+    to: string;
+  };
+  totalSalesInCents: number;
+  paidChecks: number;
+  productsSold: number;
+  products: SalesProductSummary[];
+};
