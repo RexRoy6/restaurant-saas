@@ -23,6 +23,15 @@ import {
 } from "@/db/schema";
 import { tenantDb } from "@/lib/db/tenantDb";
 
+type ProductSales = {
+    productId: number;
+    productName: string;
+    quantity: number;
+    totalInCents: number;
+    latestCreatedAt: Date;
+};
+
+
 export async function GET(
     request: NextRequest,
 ) {
@@ -73,6 +82,8 @@ export async function GET(
 
         let totalSalesInCents = 0;
         let productsSold = 0;
+        const productsMap =
+            new Map<number, ProductSales>();
 
         if (closedChecks.length > 0) {
             const checkIds = closedChecks.map(
@@ -138,9 +149,79 @@ export async function GET(
 
                     totalSalesInCents = nextTotal;
                     productsSold = nextProductsSold;
+
+                    const existingProduct =
+                        productsMap.get(item.productId);
+
+                    if (!existingProduct) {
+                        productsMap.set(
+                            item.productId,
+                            {
+                                productId: item.productId,
+                                productName: item.productName,
+                                quantity: item.quantity,
+                                totalInCents:
+                                    item.subtotalInCents,
+                                latestCreatedAt:
+                                    item.createdAt,
+                            },
+                        );
+
+                        continue;
+                    }
+
+                    const nextQuantity =
+                        existingProduct.quantity +
+                        item.quantity;
+
+                    const nextProductTotal =
+                        existingProduct.totalInCents +
+                        item.subtotalInCents;
+
+                    if (
+                        !Number.isSafeInteger(nextQuantity) ||
+                        nextQuantity < 0 ||
+                        !Number.isSafeInteger(
+                            nextProductTotal,
+                        ) ||
+                        nextProductTotal < 0
+                    ) {
+                        throw new Error(
+                            "INVALID_PRODUCT_SALES",
+                        );
+                    }
+
+                    existingProduct.quantity =
+                        nextQuantity;
+
+                    existingProduct.totalInCents =
+                        nextProductTotal;
+
+                    if (
+                        item.createdAt >
+                        existingProduct.latestCreatedAt
+                    ) {
+                        existingProduct.productName =
+                            item.productName;
+
+                        existingProduct.latestCreatedAt =
+                            item.createdAt;
+                    }
+
                 }
             }
         }
+
+        const products = Array.from(
+            productsMap.values(),
+        ).map((product) => ({
+            productId: product.productId,
+            productName: product.productName,
+            quantity: product.quantity,
+            totalInCents:
+                product.totalInCents,
+        }));
+
 
         return NextResponse.json({
             period: {
@@ -152,6 +233,7 @@ export async function GET(
             totalSalesInCents,
             paidChecks,
             productsSold,
+            products,
         });
     } catch (error) {
         const message =
