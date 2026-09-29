@@ -4,6 +4,7 @@ import { Home } from "lucide-react";
 
 import PageHeader from "@/app/components/PageHeader";
 import { useSales } from "@/modules/sales/hooks/useSales";
+import SalesPeriodSelector from "@/modules/sales/components/SalesPeriodSelector";
 
 const formatNumber = (num: number) => {
   return new Intl.NumberFormat(
@@ -25,6 +26,8 @@ const formatCurrency = (
 
 export default function CompanyDashboard() {
   const {
+    period,
+    setPeriod,
     summary,
     loading,
     error,
@@ -38,9 +41,23 @@ export default function CompanyDashboard() {
       />
 
       <div className="mt-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">
-          Ventas de hoy
-        </h2>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Ventas
+            </h2>
+
+            <p className="mt-1 text-sm text-gray-500">
+              Resumen de ventas del período seleccionado.
+            </p>
+          </div>
+
+          <SalesPeriodSelector
+            period={period}
+            onChange={setPeriod}
+            disabled={loading}
+          />
+        </div>
 
         {loading && (
           <p className="mt-4 text-sm text-gray-500">
