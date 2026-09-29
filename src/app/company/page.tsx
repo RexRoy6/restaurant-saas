@@ -6,6 +6,7 @@ import PageHeader from "@/app/components/PageHeader";
 import { useSales } from "@/modules/sales/hooks/useSales";
 import SalesPeriodSelector from "@/modules/sales/components/SalesPeriodSelector";
 import DashboardCard from "@/app/components/DashboardCard";
+import SalesProductsTable from "@/modules/sales/components/SalesProductsTable";
 
 const formatNumber = (num: number) => {
   return new Intl.NumberFormat(
@@ -75,26 +76,32 @@ export default function CompanyDashboard() {
         {!loading &&
           !error &&
           summary && (
-            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <DashboardCard
-                title="Total vendido"
-                value={formatCurrency(
-                  summary.totalSalesInCents,
-                )}
-              />
+            <div className="mt-6 space-y-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <DashboardCard
+                  title="Total vendido"
+                  value={formatCurrency(
+                    summary.totalSalesInCents,
+                  )}
+                />
 
-              <DashboardCard
-                title="Cuentas pagadas"
-                value={formatNumber(
-                  summary.paidChecks,
-                )}
-              />
+                <DashboardCard
+                  title="Cuentas pagadas"
+                  value={formatNumber(
+                    summary.paidChecks,
+                  )}
+                />
 
-              <DashboardCard
-                title="Productos vendidos"
-                value={formatNumber(
-                  summary.productsSold,
-                )}
+                <DashboardCard
+                  title="Productos vendidos"
+                  value={formatNumber(
+                    summary.productsSold,
+                  )}
+                />
+              </div>
+
+              <SalesProductsTable
+                products={summary.products}
               />
             </div>
           )}
