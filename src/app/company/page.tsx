@@ -7,6 +7,7 @@ import { useSales } from "@/modules/sales/hooks/useSales";
 import SalesPeriodSelector from "@/modules/sales/components/SalesPeriodSelector";
 import DashboardCard from "@/app/components/DashboardCard";
 import SalesProductsTable from "@/modules/sales/components/SalesProductsTable";
+import SalesDashboardSkeleton from "@/modules/sales/components/SalesDashboardSkeleton";
 
 const formatNumber = (num: number) => {
   return new Intl.NumberFormat(
@@ -33,6 +34,7 @@ export default function CompanyDashboard() {
     summary,
     loading,
     error,
+    loadSales,
   } = useSales();
 
   return (
@@ -61,50 +63,60 @@ export default function CompanyDashboard() {
           />
         </div>
 
-        {loading && (
-          <p className="mt-4 text-sm text-gray-500">
-            Cargando ventas...
-          </p>
+        {loading && !summary && (
+          <SalesDashboardSkeleton />
         )}
 
         {error && (
-          <p className="mt-4 text-sm text-red-600">
-            {error}
-          </p>
+          <div className="mt-6 rounded-xl border border-red-100 bg-red-50 p-4">
+            <p className="text-sm font-medium text-red-700">
+              No se pudieron cargar las ventas
+            </p>
+
+            <p className="mt-1 text-sm text-red-600">
+              {error}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => void loadSales()}
+              className="mt-3 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50"
+            >
+              Reintentar
+            </button>
+          </div>
         )}
 
-        {!loading &&
-          !error &&
-          summary && (
-            <div className="mt-6 space-y-6">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <DashboardCard
-                  title="Total vendido"
-                  value={formatCurrency(
-                    summary.totalSalesInCents,
-                  )}
-                />
+        {summary && !error && (
+          <div className="mt-6 space-y-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <DashboardCard
+                title="Total vendido"
+                value={formatCurrency(
+                  summary.totalSalesInCents,
+                )}
+              />
 
-                <DashboardCard
-                  title="Cuentas pagadas"
-                  value={formatNumber(
-                    summary.paidChecks,
-                  )}
-                />
+              <DashboardCard
+                title="Cuentas pagadas"
+                value={formatNumber(
+                  summary.paidChecks,
+                )}
+              />
 
-                <DashboardCard
-                  title="Productos vendidos"
-                  value={formatNumber(
-                    summary.productsSold,
-                  )}
-                />
-              </div>
-
-              <SalesProductsTable
-                products={summary.products}
+              <DashboardCard
+                title="Productos vendidos"
+                value={formatNumber(
+                  summary.productsSold,
+                )}
               />
             </div>
-          )}
+
+            <SalesProductsTable
+              products={summary.products}
+            />
+          </div>
+        )}
 
 
       </div>
