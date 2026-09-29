@@ -38,7 +38,7 @@ export const RBAC_CONFIG: RbacRoute[] = [
    {
     pattern: "/api/company.*",
     methods: {
-      GET: ["admin","owner"],
+      GET: ["admin","owner","employee"],
       POST: ["owner"],
       PATCH: ["owner"],
       DELETE: ["owner"]
@@ -53,7 +53,7 @@ export const RBAC_CONFIG: RbacRoute[] = [
    {
     pattern: "/api/products.*",
     methods: {
-      GET: ["owner"],
+      GET: ["owner","employee"],
       POST: ["owner"],
       PATCH: ["owner"],
       DELETE: ["owner"]
@@ -62,7 +62,7 @@ export const RBAC_CONFIG: RbacRoute[] = [
   {
     pattern: "/api/categories.*",
     methods: {
-      GET: ["owner"],
+      GET: ["owner","employee"],
       POST: ["owner"],
       PATCH: ["owner"],
       DELETE: ["owner"]
@@ -71,19 +71,19 @@ export const RBAC_CONFIG: RbacRoute[] = [
   {
     pattern: "/api/checks.*",
     methods: {
-      GET: ["owner"],
-      POST: ["owner"],
-      PATCH: ["owner"],
-      DELETE: ["owner"]
+      GET: ["owner","employee"],
+      POST: ["owner","employee"],
+      PATCH: ["owner","employee"],
+      DELETE: ["owner","employee"],
     }
   },
   {
     pattern: "/api/orders.*",
     methods: {
-      GET: ["owner"],
-      POST: ["owner"],
-      PATCH: ["owner"],
-      DELETE: ["owner"]
+      GET: ["owner","employee"],
+      POST: ["owner","employee"],
+      PATCH: ["owner","employee"],
+      DELETE: ["owner","employee"],
     }
   },
   {
