@@ -72,6 +72,7 @@ export async function GET(
         const paidChecks = closedChecks.length;
 
         let totalSalesInCents = 0;
+        let productsSold = 0;
 
         if (closedChecks.length > 0) {
             const checkIds = closedChecks.map(
@@ -111,6 +112,10 @@ export async function GET(
                         totalSalesInCents +
                         item.subtotalInCents;
 
+                    const nextProductsSold =
+                        productsSold +
+                        item.quantity;
+
                     if (
                         !Number.isSafeInteger(nextTotal) ||
                         nextTotal < 0
@@ -120,7 +125,19 @@ export async function GET(
                         );
                     }
 
+                    if (
+                        !Number.isSafeInteger(
+                            nextProductsSold,
+                        ) ||
+                        nextProductsSold < 0
+                    ) {
+                        throw new Error(
+                            "INVALID_PRODUCTS_SOLD",
+                        );
+                    }
+
                     totalSalesInCents = nextTotal;
+                    productsSold = nextProductsSold;
                 }
             }
         }
@@ -134,6 +151,7 @@ export async function GET(
             },
             totalSalesInCents,
             paidChecks,
+            productsSold,
         });
     } catch (error) {
         const message =
