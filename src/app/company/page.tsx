@@ -1,84 +1,98 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-
-import DashboardCard from "@/app/components/DashboardCard";
-import Toast from "@/app/components/Toast";
-import PageHeader from "@/app/components/PageHeader";
 import { Home } from "lucide-react";
 
+import PageHeader from "@/app/components/PageHeader";
+import { useSales } from "@/modules/sales/hooks/useSales";
+
 const formatNumber = (num: number) => {
-  return new Intl.NumberFormat("es-MX").format(num);
+  return new Intl.NumberFormat(
+    "es-MX",
+  ).format(num);
 };
 
-const formatCurrency = (num: number) => {
-  return new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    minimumFractionDigits: 0,
-  }).format(num);
+const formatCurrency = (
+  cents: number,
+) => {
+  return new Intl.NumberFormat(
+    "es-MX",
+    {
+      style: "currency",
+      currency: "MXN",
+    },
+  ).format(cents / 100);
 };
 
 export default function CompanyDashboard() {
-  const router = useRouter();
+  const {
+    summary,
+    loading,
+    error,
+  } = useSales();
 
-  const [stats, setStats] = useState<any>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  const fetchDashboard = async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const meRes = await fetch("/api/company/me", {
-        credentials: "include",
-      });
-
-      if (meRes.status === 401) {
-        router.replace("/");
-        return;
-      }
-
-      if (!meRes.ok) {
-        throw new Error("No se pudo verificar la sesión");
-      }
-
-      const dashRes = await fetch("/api/company/dashboard", {
-        credentials: "include",
-      });
-
-      if (!dashRes.ok) {
-        throw new Error("No se pudieron cargar las métricas");
-      }
-
-      const dashData = await dashRes.json();
-
-      setStats(dashData);
-    } catch (err: any) {
-      setError(err.message || "Error de conexión con el servidor");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
- return (
+  return (
     <div className="relative">
-      <PageHeader title="Inicio" icon={Home} />
+      <PageHeader
+        title="Inicio"
+        icon={Home}
+      />
 
       <div className="mt-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">
-          Dashboard
+          Ventas de hoy
         </h2>
 
-        <p className="mt-2 text-sm text-gray-500">
-          Las métricas del negocio estarán disponibles próximamente.
-        </p>
+        {loading && (
+          <p className="mt-4 text-sm text-gray-500">
+            Cargando ventas...
+          </p>
+        )}
+
+        {error && (
+          <p className="mt-4 text-sm text-red-600">
+            {error}
+          </p>
+        )}
+
+        {!loading &&
+          !error &&
+          summary && (
+            <div className="mt-6 space-y-3">
+              <p className="text-sm text-gray-700">
+                Total vendido:{" "}
+                <strong>
+                  {formatCurrency(
+                    summary.totalSalesInCents,
+                  )}
+                </strong>
+              </p>
+
+              <p className="text-sm text-gray-700">
+                Cuentas pagadas:{" "}
+                <strong>
+                  {formatNumber(
+                    summary.paidChecks,
+                  )}
+                </strong>
+              </p>
+
+              <p className="text-sm text-gray-700">
+                Productos vendidos:{" "}
+                <strong>
+                  {formatNumber(
+                    summary.productsSold,
+                  )}
+                </strong>
+              </p>
+
+              <p className="text-sm text-gray-500">
+                Productos en el resumen:{" "}
+                {formatNumber(
+                  summary.products.length,
+                )}
+              </p>
+            </div>
+          )}
       </div>
     </div>
   );
