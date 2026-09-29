@@ -12,7 +12,7 @@ export const FRONTEND_PERMISSIONS: RoutePermission[] = [
   },
   {
     path: "/company/orders",
-    roles: ["owner"],//aqui se agregaria employee
+    roles: ["owner","employee"],//aqui se agregaria employee
   },
   {
     path: "/company/products",
