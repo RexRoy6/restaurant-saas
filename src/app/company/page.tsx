@@ -5,6 +5,7 @@ import { Home } from "lucide-react";
 import PageHeader from "@/app/components/PageHeader";
 import { useSales } from "@/modules/sales/hooks/useSales";
 import SalesPeriodSelector from "@/modules/sales/components/SalesPeriodSelector";
+import DashboardCard from "@/app/components/DashboardCard";
 
 const formatNumber = (num: number) => {
   return new Intl.NumberFormat(
@@ -74,42 +75,31 @@ export default function CompanyDashboard() {
         {!loading &&
           !error &&
           summary && (
-            <div className="mt-6 space-y-3">
-              <p className="text-sm text-gray-700">
-                Total vendido:{" "}
-                <strong>
-                  {formatCurrency(
-                    summary.totalSalesInCents,
-                  )}
-                </strong>
-              </p>
-
-              <p className="text-sm text-gray-700">
-                Cuentas pagadas:{" "}
-                <strong>
-                  {formatNumber(
-                    summary.paidChecks,
-                  )}
-                </strong>
-              </p>
-
-              <p className="text-sm text-gray-700">
-                Productos vendidos:{" "}
-                <strong>
-                  {formatNumber(
-                    summary.productsSold,
-                  )}
-                </strong>
-              </p>
-
-              <p className="text-sm text-gray-500">
-                Productos en el resumen:{" "}
-                {formatNumber(
-                  summary.products.length,
+            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <DashboardCard
+                title="Total vendido"
+                value={formatCurrency(
+                  summary.totalSalesInCents,
                 )}
-              </p>
+              />
+
+              <DashboardCard
+                title="Cuentas pagadas"
+                value={formatNumber(
+                  summary.paidChecks,
+                )}
+              />
+
+              <DashboardCard
+                title="Productos vendidos"
+                value={formatNumber(
+                  summary.productsSold,
+                )}
+              />
             </div>
           )}
+
+
       </div>
     </div>
   );
