@@ -66,7 +66,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const auth = await requireAuth({
-      roles: ["owner"],
+      roles: ["owner", "employee"],
     });
 
     if (auth.companyId === null) {

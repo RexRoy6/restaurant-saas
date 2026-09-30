@@ -6,7 +6,7 @@ import { tenantDb } from "@/lib/db/tenantDb";
 export async function GET() {
     try {
         const auth = await requireAuth({
-            roles: ["owner"],
+            roles: ["owner", "employee"],
         });
 
         if (auth.companyId === null) {
