@@ -37,7 +37,7 @@ export async function PATCH(
 ) {
     try {
         const auth = await requireAuth({
-            roles: ["owner"],
+            roles: ["owner", "employee"],
         });
 
         if (auth.companyId === null) {
