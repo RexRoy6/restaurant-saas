@@ -1,18 +1,30 @@
-import { UserRole } from "@/db/schema"
-import { FRONTEND_PERMISSIONS } from "./frontendPermissions"
+import { UserRole } from "@/db/schema";
+import { FRONTEND_PERMISSIONS } from "./frontendPermissions";
 
 export function canAccessRoute(
   pathname: string,
-  role: UserRole
+  role: UserRole,
 ) {
+  const matchingRoutes =
+    FRONTEND_PERMISSIONS.filter(
+      (route) =>
+        pathname === route.path ||
+        pathname.startsWith(
+          `${route.path}/`,
+        ),
+    );
 
-  const route = FRONTEND_PERMISSIONS.find(
-    route => route.path === pathname
-  )
-
-  if (!route) {
-    return true
+  if (matchingRoutes.length === 0) {
+    return true;
   }
 
-  return route.roles.includes(role)
+  const route = matchingRoutes.reduce(
+    (mostSpecific, current) =>
+      current.path.length >
+        mostSpecific.path.length
+        ? current
+        : mostSpecific,
+  );
+
+  return route.roles.includes(role);
 }

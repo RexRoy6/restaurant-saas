@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "@/app/components/Sidebar";
 import Topbar from "@/app/components/Topbar";
 import { UserRole } from "@/db/schema";
+import { usePathname, useRouter } from "next/navigation";
+import { canAccessRoute } from "@/lib/auth/canAccessRoute";
 
 export default function CompanyShell({
   children,
@@ -12,9 +14,26 @@ export default function CompanyShell({
   children: React.ReactNode;
   role: UserRole;
 }) {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const hasAccess = canAccessRoute(
+    pathname,
+    role,
+  );
   const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    if (!hasAccess) {
+      router.replace("/");
+    }
+  }, [hasAccess, router]);
+
+  if (!hasAccess) {
+    return null;
+  }
 
   return (
+
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex flex-col font-sans">
       <Topbar
         onToggle={() => setCollapsed(!collapsed)}
@@ -22,7 +41,7 @@ export default function CompanyShell({
 
       {/* OVERLAY PARA MÓVILES: Se muestra si el menú no está colapsado */}
       {!collapsed && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden transition-opacity"
           onClick={() => setCollapsed(true)}
         />

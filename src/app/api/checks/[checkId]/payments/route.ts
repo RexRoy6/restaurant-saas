@@ -45,7 +45,7 @@ export async function POST(
          * ============================================
          */
         const auth = await requireAuth({
-            roles: ["owner"],
+            roles: ["owner", "employee"],
         });
 
         if (auth.companyId === null) {
