@@ -44,11 +44,12 @@ jobs:
           ln -nfs /opt/restaurant-saas/.env.production ${RELEASE_DIR}/.env
         "
 
-        # Install + build on VPS
+        # Install + build + migrate database on VPS
         ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "
           cd ${RELEASE_DIR}
           npm ci --production=false
           npm run build
+          npm run db:migrate
         "
 
         # Switch release
