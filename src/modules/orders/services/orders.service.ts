@@ -1,4 +1,5 @@
 import type {
+  CancelCheckInput,
   CancelOrderInput,
   Check,
   CheckSummary,
@@ -26,6 +27,31 @@ async function getErrorMessage(
 
   return "Ocurrió un error inesperado";
 }
+
+export async function cancelCheck(
+  checkId: number,
+  input: CancelCheckInput,
+): Promise<void> {
+  const response = await fetch(
+    `/api/checks/${checkId}/cancel`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type":
+          "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(input),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response),
+    );
+  }
+}
+
 export async function getChecks(): Promise<
   CheckSummary[]
 > {
