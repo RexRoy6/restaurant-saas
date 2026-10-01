@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import {
+    cancelCheck,
     cancelOrder,
     createOrder,
     createPayment,
@@ -15,6 +16,7 @@ import {
 } from "../services/orders.service";
 
 import type {
+    CancelCheckInput,
     CancelOrderInput,
     Check,
     CreateOrderInput,
@@ -161,6 +163,38 @@ export function useCheck(
             setSaving(false);
         }
     };
+    const cancelCurrentCheck = async (
+        input: CancelCheckInput,
+    ) => {
+        if (checkId === null) {
+            return false;
+        }
+
+        try {
+            setSaving(true);
+            setError(null);
+
+            await cancelCheck(
+                checkId,
+                input,
+            );
+
+            await loadCheck();
+
+            return true;
+        } catch (error) {
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : "No se pudo cancelar la cuenta",
+            );
+
+            return false;
+        } finally {
+            setSaving(false);
+        }
+    };
+
 
     const addPayment = async (
         input: CreatePaymentInput,
@@ -204,6 +238,7 @@ export function useCheck(
         addOrder,
         changeOrderStatus,
         cancelExistingOrder,
+        cancelCurrentCheck,
         addPayment,
         clearError,
     };
