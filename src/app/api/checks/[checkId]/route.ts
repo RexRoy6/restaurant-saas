@@ -296,12 +296,16 @@ export async function GET(
     //   totalInCents:
     //     checkTotalInCents,
     // });
-
     return NextResponse.json({
       id: check.id,
       name: check.name,
       note: check.note,
       status: check.status,
+      //agregar las cosas del cancel aqui
+      cancelledAt: check.cancelledAt,
+      cancelledBy: check.cancelledBy,
+      cancellationReason: check.cancellationReason,
+
       closedAt: check.closedAt,
       createdAt: check.createdAt,
 
