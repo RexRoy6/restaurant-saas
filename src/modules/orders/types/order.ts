@@ -46,13 +46,16 @@ export type Payment = {
   paymentMethod: PaymentMethod;
   paidAt: string;
 };
-
 export type Check = {
   id: number;
   name: string | null;
   note: string | null;
 
   status: CheckStatus;
+
+  cancelledAt: string | null;
+  cancelledBy: number | null;
+  cancellationReason: string | null;
 
   closedAt: string | null;
   createdAt: string;
@@ -96,7 +99,10 @@ export type CancelOrderInput = {
 };
 export type UpdateOrderStatusInput = {
   status:
-    | "PREPARING"
-    | "READY"
-    | "DELIVERED";
+  | "PREPARING"
+  | "READY"
+  | "DELIVERED";
+};
+export type CancelCheckInput = {
+  reason: string;
 };
