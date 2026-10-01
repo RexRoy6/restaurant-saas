@@ -17,6 +17,7 @@ import OrderCard from "./OrderCard";
 import CancelOrderModal from "./CancelOrderModal";
 import PaymentModal from "./PaymentModal";
 import PaymentsHistory from "./PaymentsHistory";
+import CancelCheckModal from "./CancelCheckModal";
 
 type CheckDetailProps = {
     checkId: number;
@@ -56,6 +57,7 @@ export default function CheckDetail({
         cancelExistingOrder,
         addPayment,
         clearError,
+        cancelCurrentCheck,
     } = useCheck(checkId);
 
     const [
@@ -69,6 +71,10 @@ export default function CheckDetail({
     const [
         showPaymentModal,
         setShowPaymentModal,
+    ] = useState(false);
+    const [
+        showCancelCheckModal,
+        setShowCancelCheckModal,
     ] = useState(false);
 
     if (loading) {
@@ -102,6 +108,13 @@ export default function CheckDetail({
     if (!check) {
         return null;
     }
+    const canCancelCheck =
+        check.status === "OPEN" &&
+        check.paidInCents === 0 &&
+        check.orders.every(
+            (order) =>
+                order.status === "CANCELLED",
+        );
 
     const handleCreateOrder = async (
         input: Parameters<
@@ -157,11 +170,48 @@ export default function CheckDetail({
                                     {check.note}
                                 </p>
                             )}
+
+                            {check.status === "CANCELLED" &&
+                                check.cancelledAt &&
+                                check.cancellationReason && (
+                                    <div className="mt-4 rounded-lg border border-red-100 bg-red-50 px-4 py-3">
+                                        <p className="text-sm font-medium text-red-700">
+                                            Cuenta cancelada
+                                        </p>
+
+                                        <p className="mt-1 text-sm text-red-600">
+                                            {check.cancellationReason}
+                                        </p>
+
+                                        <p className="mt-1 text-xs text-red-500">
+                                            {formatDate(
+                                                check.cancelledAt,
+                                            )}
+                                        </p>
+                                    </div>
+                                )}
+
                         </div>
 
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <ReceiptText size={18} />
-                            #{check.id}
+                        <div className="flex flex-col items-end gap-3">
+                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                                <ReceiptText size={18} />
+                                #{check.id}
+                            </div>
+
+                            {canCancelCheck && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        clearError();
+                                        setShowCancelCheckModal(true);
+                                    }}
+                                    disabled={saving}
+                                    className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Cancelar cuenta
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -356,6 +406,24 @@ export default function CheckDetail({
                     onPay={addPayment}
                 />
             )}
+            {showCancelCheckModal &&
+                canCancelCheck && (
+                    <CancelCheckModal
+                        checkId={check.id}
+                        saving={saving}
+                        error={error}
+                        onClose={() => {
+                            clearError();
+                            setShowCancelCheckModal(
+                                false,
+                            );
+                        }}
+                        onCancel={
+                            cancelCurrentCheck
+                        }
+                    />
+                )}
+
         </>
     );
 

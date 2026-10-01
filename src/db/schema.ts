@@ -258,6 +258,16 @@ export const checks = mysqlTable(
       .default("OPEN"),
 
     closedAt: timestamp("closed_at"),
+    cancelledAt: timestamp("cancelled_at"),
+    //cosas para auditoria de cancelacion
+    cancelledBy: bigint("cancelled_by", {
+      mode: "number",
+    }).references(() => users.id),
+
+    cancellationReason: varchar(
+      "cancellation_reason",
+      { length: 500 },
+    ),
 
     ...baseColumns,
   },
@@ -268,6 +278,9 @@ export const checks = mysqlTable(
       table.companyId,
       table.status,
     ),
+    cancelledByIdx: index(
+      "checks_cancelled_by_idx",
+    ).on(table.cancelledBy),
   }),
 );
 //ordenes/tickets
@@ -355,8 +368,8 @@ export const orderItems = mysqlTable(
     }).notNull(),
 
     categoryName: varchar("category_name", {
-  length: 120,
-}).notNull(),
+      length: 120,
+    }).notNull(),
 
     unitPriceInCents: bigint(
       "unit_price_in_cents",
