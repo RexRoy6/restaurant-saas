@@ -72,6 +72,27 @@ export async function getChecks(): Promise<
 
   return response.json();
 }
+
+export async function getPaidPendingChecks(): Promise<
+  CheckSummary[]
+> {
+  const response = await fetch(
+    "/api/checks/paid-pending",
+    {
+      method: "GET",
+      credentials: "include",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response),
+    );
+  }
+
+  return response.json();
+}
+
 export async function getCheck(
   checkId: number,
 ): Promise<Check> {
