@@ -315,7 +315,7 @@ export default function CheckDetail({
                                     order={order}
                                     saving={saving}
                                     readOnly={
-                                        check.status !== "OPEN"
+                                        check.status === "CANCELLED"
                                     }
                                     canCancel={
                                         check.status === "OPEN" &&
