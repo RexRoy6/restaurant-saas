@@ -1,15 +1,17 @@
-import { FileText } from "lucide-react";
+import {
+  CircleCheckBig,
+} from "lucide-react";
 
 import PageHeader from "@/app/components/PageHeader";
-import ChecksManager from "@/modules/orders/components/ChecksManager";
 import OrdersTabs from "@/modules/orders/components/OrdersTabs";
+import PaidPendingChecksManager from "@/modules/orders/components/PaidPendingChecksManager";
 
-export default function OrdersPage() {
+export default function PaidPendingOrdersPage() {
   return (
     <div className="relative">
       <PageHeader
         title="Órdenes"
-        icon={FileText}
+        icon={CircleCheckBig}
       />
 
       <div className="mt-6">
@@ -17,7 +19,7 @@ export default function OrdersPage() {
       </div>
 
       <div className="mt-6">
-        <ChecksManager />
+        <PaidPendingChecksManager />
       </div>
     </div>
   );
