@@ -23,6 +23,12 @@ export type SalesProductSummary = {
   totalInCents: number;
 };
 
+export type salesByPaymentMethod = {
+  transferInCents: number;
+  cardInCents: number;
+  cashInCents: number;
+};
+
 export type SalesSummary = {
   period: {
     preset: SalesPeriod;
@@ -33,5 +39,6 @@ export type SalesSummary = {
   totalSalesInCents: number;
   paidChecks: number;
   productsSold: number;
+  salesByPaymentMethod: salesByPaymentMethod;
   products: SalesProductSummary[];
 };
