@@ -111,6 +111,40 @@ export default function CompanyDashboard() {
                 )}
               />
             </div>
+            <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-5">
+              <div className="mb-4">
+                <h3 className="font-semibold text-gray-900">
+                  Métodos de pago
+                </h3>
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Desglose de las ventas por método de pago.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <DashboardCard
+                  title="Efectivo"
+                  value={formatCurrency(
+                    summary.salesByPaymentMethod.cashInCents,
+                  )}
+                />
+
+                <DashboardCard
+                  title="Tarjeta"
+                  value={formatCurrency(
+                    summary.salesByPaymentMethod.cardInCents,
+                  )}
+                />
+
+                <DashboardCard
+                  title="Transferencia"
+                  value={formatCurrency(
+                    summary.salesByPaymentMethod.transferInCents,
+                  )}
+                />
+              </div>
+            </div>
 
             <SalesProductsTable
               products={summary.products}
