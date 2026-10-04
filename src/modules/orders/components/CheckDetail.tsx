@@ -123,13 +123,26 @@ export default function CheckDetail({
     ) => {
         return addOrder(input);
     };
+   // console.log(check);
 
     return (
         <>
             <div className="space-y-6">
                 <div>
-                    <Link
+
+                    {/* <Link
                         href="/company/orders"
+                        className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-gray-900"
+                    >
+                        <ArrowLeft size={17} />
+                        Volver a órdenes
+                    </Link> */}
+                    <Link
+                        href={
+                            check.status === "CLOSED"
+                                ? "/company/orders/paid-pending"
+                                : "/company/orders"
+                        }
                         className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-gray-900"
                     >
                         <ArrowLeft size={17} />

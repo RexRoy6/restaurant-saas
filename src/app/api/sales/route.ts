@@ -20,6 +20,7 @@ import {
     checks,
     orders,
     orderItems,
+    payments,
 } from "@/db/schema";
 import { tenantDb } from "@/lib/db/tenantDb";
 import type {
@@ -89,12 +90,43 @@ export async function GET(
         const productsMap =
             new Map<number, ProductSales>();
 
-
+        //
+        let cashInCents = 0;
+        let cardInCents = 0;
+        let transferInCents = 0;
 
         if (closedChecks.length > 0) {
             const checkIds = closedChecks.map(
                 (check) => check.id,
             );
+
+            //pagos correspondientes a estos checks ids
+            const checkPayments =
+                await tenant.findMany(
+                    payments,
+                    inArray(
+                        payments.checkId,
+                        checkIds,
+                    ),
+                );
+
+
+            for (const payment of checkPayments) {
+                switch (payment.paymentMethod) {
+                    case "CASH":
+                        cashInCents += payment.amountInCents;
+                        break;
+
+                    case "CARD":
+                        cardInCents += payment.amountInCents;
+                        break;
+
+                    case "TRANSFER":
+                        transferInCents += payment.amountInCents;
+                        break;
+                }
+            }
+
 
             const activeOrders =
                 await tenant.findMany(
@@ -220,13 +252,16 @@ export async function GET(
 
         const products = Array.from(
             productsMap.values(),
-        ).map((product) => ({
-            productId: product.productId,
-            productName: product.productName,
-            quantity: product.quantity,
-            totalInCents:
-                product.totalInCents,
-        }));
+        )
+            .map((product) => ({
+                productId: product.productId,
+                productName: product.productName,
+                quantity: product.quantity,
+                totalInCents: product.totalInCents,
+            }))
+            .sort(
+                (a, b) => b.quantity - a.quantity,
+            );
 
         const summary: SalesSummary = {
             period: {
@@ -235,9 +270,17 @@ export async function GET(
                 from: period.from.toISOString(),
                 to: period.to.toISOString(),
             },
+
             totalSalesInCents,
             paidChecks,
             productsSold,
+
+            salesByPaymentMethod: {
+                cashInCents,
+                cardInCents,
+                transferInCents,
+            },
+
             products,
         };
 
