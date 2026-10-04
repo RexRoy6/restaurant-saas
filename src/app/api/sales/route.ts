@@ -220,13 +220,16 @@ export async function GET(
 
         const products = Array.from(
             productsMap.values(),
-        ).map((product) => ({
-            productId: product.productId,
-            productName: product.productName,
-            quantity: product.quantity,
-            totalInCents:
-                product.totalInCents,
-        }));
+        )
+            .map((product) => ({
+                productId: product.productId,
+                productName: product.productName,
+                quantity: product.quantity,
+                totalInCents: product.totalInCents,
+            }))
+            .sort(
+                (a, b) => b.quantity - a.quantity,
+            );
 
         const summary: SalesSummary = {
             period: {
