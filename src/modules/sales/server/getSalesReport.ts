@@ -2,10 +2,15 @@ import { getSalesData } from "./getSalesData";
 
 import type {
     SalesPeriodRange,
+    SalesReport,
     SalesReportPaymentRow,
     SalesReportRow,
-    SalesReportSummary
+    SalesReportSummary,
 } from "../types/sales";
+
+import {
+    getCompanySalesContext,
+} from "./getCompanySalesContext";
 
 type SalesData = Awaited<
     ReturnType<typeof getSalesData>
@@ -438,12 +443,19 @@ function validateSalesReport(
     }
 }
 
-//temporal:
-export async function getSalesReportData(
+export async function getSalesReport(
+    companyId: number,
     period: SalesPeriodRange,
-) {
-    const data =
-        await getSalesData(period);
+): Promise<SalesReport> {
+    const [
+        data,
+        companyContext,
+    ] = await Promise.all([
+        getSalesData(period),
+        getCompanySalesContext(
+            companyId,
+        ),
+    ]);
 
     const salesRows =
         buildSalesRows(data);
@@ -466,6 +478,26 @@ export async function getSalesReportData(
     );
 
     return {
+        metadata: {
+            companyName:
+                companyContext.companyName,
+
+            preset:
+                period.preset,
+
+            timezone:
+                period.timezone,
+
+            from:
+                period.from,
+
+            to:
+                period.to,
+
+            generatedAt:
+                new Date(),
+        },
+
         summary,
         salesRows,
         paymentRows,
