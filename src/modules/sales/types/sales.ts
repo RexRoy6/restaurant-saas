@@ -42,3 +42,66 @@ export type SalesSummary = {
   salesByPaymentMethod: salesByPaymentMethod;
   products: SalesProductSummary[];
 };
+
+//es para e reporte de xlsx
+export type SalesReportMetadata = {
+  companyName: string;
+  preset: SalesPeriod;
+  timezone: string;
+  from: Date;
+  to: Date;
+  generatedAt: Date;
+};
+
+export type SalesReportSummary = {
+  totalSalesInCents: number;
+  paidChecks: number;
+  productsSold: number;
+
+  salesByPaymentMethod: {
+    cashInCents: number;
+    cardInCents: number;
+    transferInCents: number;
+  };
+
+  totalPaymentsInCents: number;
+};
+
+export type SalesReportRow = {
+  checkId: number;
+  checkName: string | null;
+  closedAt: Date;
+
+  orderId: number;
+
+  productId: number;
+  productName: string;
+  sku: string | null;
+  categoryName: string | null;
+
+  quantity: number;
+  unitPriceInCents: number;
+  subtotalInCents: number;
+};
+
+export type SalesReportPaymentRow = {
+  checkId: number;
+  checkName: string | null;
+  closedAt: Date;
+
+  paymentId: number;
+  paidAt: Date;
+  paymentMethod:
+  | "CASH"
+  | "CARD"
+  | "TRANSFER";
+
+  amountInCents: number;
+};
+
+export type SalesReport = {
+  metadata: SalesReportMetadata;
+  summary: SalesReportSummary;
+  salesRows: SalesReportRow[];
+  paymentRows: SalesReportPaymentRow[];
+};
