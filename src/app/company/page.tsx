@@ -8,6 +8,7 @@ import SalesPeriodSelector from "@/modules/sales/components/SalesPeriodSelector"
 import DashboardCard from "@/app/components/DashboardCard";
 import SalesProductsTable from "@/modules/sales/components/SalesProductsTable";
 import SalesDashboardSkeleton from "@/modules/sales/components/SalesDashboardSkeleton";
+import SalesReportDownloadButton from "@/modules/sales/components/SalesReportDownloadButton";
 
 const formatNumber = (num: number) => {
   return new Intl.NumberFormat(
@@ -56,11 +57,18 @@ export default function CompanyDashboard() {
             </p>
           </div>
 
-          <SalesPeriodSelector
-            period={period}
-            onChange={setPeriod}
-            disabled={loading}
-          />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <SalesPeriodSelector
+              period={period}
+              onChange={setPeriod}
+              disabled={loading}
+            />
+
+            <SalesReportDownloadButton
+              period={period}
+              disabled={loading}
+            />
+          </div>
         </div>
 
         {loading && !summary && (
