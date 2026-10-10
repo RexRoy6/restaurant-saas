@@ -2,13 +2,14 @@
 import { and, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
-import { companies } from "@/db/schema";
+import { companies, timezones } from "@/db/schema";
 
 export type PublicCompanyContext = {
   id: number;
   name: string;
   slug: string;
   currency: "MXN";
+  timezone: string;
 };
 
 export async function getPublicCompanyBySlug(
@@ -28,8 +29,13 @@ export async function getPublicCompanyBySlug(
       name: companies.name,
       slug: companies.slug,
       currency: companies.currency,
+      timezone: timezones.name,
     })
     .from(companies)
+    .innerJoin(
+      timezones,
+      eq(companies.timezoneId, timezones.id),
+    )
     .where(
       and(
         eq(companies.slug, slug),
