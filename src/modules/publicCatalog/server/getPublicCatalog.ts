@@ -5,6 +5,18 @@ import { db } from "@/db";
 import { categories, products } from "@/db/schema";
 
 import { getPublicCompanyBySlug } from "./getPublicCompanyBySlug";
+import {
+  readCompanyPublicInfo,
+} from "@/modules/companyPublicInfo/server/repository";
+
+import {
+  calculateOpeningStatus,
+  type OpeningStatus,
+} from "@/modules/companyPublicInfo/server/calculateOpeningStatus";
+
+import type {
+  BusinessHourInput,
+} from "@/modules/companyPublicInfo/server/validation";
 
 export type PublicCatalogProduct = {
   name: string;
@@ -24,6 +36,14 @@ export type PublicCatalog = {
     currency: "MXN";
   };
   categories: PublicCatalogCategory[];
+  publicInfo: {
+    googleMapsUrl: string | null;
+    isTemporarilyClosed: boolean;
+    temporaryClosureReason: string | null;
+    timezone: string;
+    businessHours: BusinessHourInput[];
+    openingStatus: OpeningStatus;
+  };
 };
 
 export async function getPublicCatalog(
@@ -35,6 +55,15 @@ export async function getPublicCatalog(
   if (!company) {
     return null;
   }
+
+  const publicInfo = await readCompanyPublicInfo(company.id);
+
+  const openingStatus = calculateOpeningStatus({
+    timezone: company.timezone,
+    businessHours: publicInfo.businessHours,
+    hasConfiguredHours: publicInfo.hasConfiguredHours,
+    isTemporarilyClosed: publicInfo.isTemporarilyClosed,
+  });
 
   // 2. Obtener únicamente categorías activas
   // pertenecientes a esta Company.
@@ -123,5 +152,14 @@ export async function getPublicCatalog(
       currency: company.currency,
     },
     categories: publicCategories,
+    publicInfo: {
+      googleMapsUrl: publicInfo.googleMapsUrl,
+      isTemporarilyClosed: publicInfo.isTemporarilyClosed,
+      temporaryClosureReason:
+        publicInfo.temporaryClosureReason,
+      timezone: company.timezone,
+      businessHours: publicInfo.businessHours,
+      openingStatus,
+    },
   };
 }
