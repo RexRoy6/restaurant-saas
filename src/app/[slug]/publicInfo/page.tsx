@@ -5,6 +5,7 @@ import { getPublicCatalog } from "@/modules/publicCatalog/server/getPublicCatalo
 
 import { PublicCatalogHeader } from "@/modules/publicCatalog/components/PublicCatalogHeader";
 import { PublicCategorySection } from "@/modules/publicCatalog/components/PublicCategorySection";
+import { PublicBusinessInfo } from "@/modules/publicCatalog/components/PublicBusinessInfo";
 
 type PublicInfoPageProps = {
     params: Promise<{
@@ -32,6 +33,7 @@ export default async function PublicInfoPage({
             />
 
             <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+                <PublicBusinessInfo publicInfo={catalog.publicInfo} />
 
                 {catalog.categories.length === 0 ? (
                     <section className="rounded-2xl border border-gray-200 bg-white px-6 py-16 text-center shadow-sm">

@@ -134,6 +134,102 @@ export const companies = mysqlTable(
   }),
 );
 
+
+
+/* ---------- COMPANY PUBLIC INFO ---------- */
+
+export const companyPublicInfo = mysqlTable(
+  "company_public_info",
+  {
+    id: bigint("id", { mode: "number" })
+      .primaryKey()
+      .autoincrement(),
+
+    companyId: bigint("company_id", { mode: "number" })
+      .notNull()
+      .references(() => companies.id),
+
+    googleMapsUrl: varchar("google_maps_url", {
+      length: 2048,
+    }),
+
+    isTemporarilyClosed: boolean("is_temporarily_closed")
+      .notNull()
+      .default(false),
+
+    temporaryClosureReason: varchar(
+      "temporary_closure_reason",
+      { length: 500 },
+    ),
+
+    ...baseColumns,
+  },
+  (table) => ({
+    companyUnique: uniqueIndex(
+      "company_public_info_company_unique",
+    ).on(table.companyId),
+  }),
+);
+
+
+/* ---------- COMPANY BUSINESS HOURS ---------- */
+
+export const companyBusinessHours = mysqlTable(
+  "company_business_hours",
+  {
+    id: bigint("id", { mode: "number" })
+      .primaryKey()
+      .autoincrement(),
+
+    companyId: bigint("company_id", { mode: "number" })
+      .notNull()
+      .references(() => companies.id),
+
+    dayOfWeek: bigint("day_of_week", {
+      mode: "number",
+    }).notNull(),
+
+    isClosed: boolean("is_closed")
+      .notNull()
+      .default(true),
+
+    opensAt: varchar("opens_at", {
+      length: 5,
+    }),
+
+    closesAt: varchar("closes_at", {
+      length: 5,
+    }),
+
+    ...baseColumns,
+  },
+  (table) => ({
+    companyDayUnique: uniqueIndex(
+      "company_business_hours_company_day_unique",
+    ).on(table.companyId, table.dayOfWeek),
+
+    dayRangeCheck: check(
+      "company_business_hours_day_range",
+      sql`${table.dayOfWeek} BETWEEN 0 AND 6`,
+    ),
+
+    hoursConsistencyCheck: check(
+      "company_business_hours_consistency",
+      sql`(
+        (${table.isClosed} = true
+          AND ${table.opensAt} IS NULL
+          AND ${table.closesAt} IS NULL)
+        OR
+        (${table.isClosed} = false
+          AND ${table.opensAt} IS NOT NULL
+          AND ${table.closesAt} IS NOT NULL
+          AND ${table.opensAt} <> ${table.closesAt})
+      )`,
+    ),
+  }),
+);
+
+
 //categorias para productos
 /* ---------- CATEGORIES ---------- */
 
