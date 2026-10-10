@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CompanyBusinessHoursEditor, {
     DEFAULT_BUSINESS_HOURS,
     type BusinessHour,
@@ -20,6 +20,74 @@ export default function CompanyPublicInfoForm() {
     const [temporaryClosureReason, setTemporaryClosureReason] =
         useState("");
 
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
+
+
+
+    useEffect(() => {
+        const controller = new AbortController();
+
+        async function loadPublicInfo() {
+            try {
+                setIsLoading(true);
+                setLoadError(null);
+
+                const response = await fetch(
+                    "/api/company/public-info",
+                    {
+                        method: "GET",
+                        credentials: "same-origin",
+                        cache: "no-store",
+                        signal: controller.signal,
+                    },
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        response.status === 403
+                            ? "No tienes permisos para consultar esta configuración."
+                            : "No se pudo cargar la información pública del negocio.",
+                    );
+                }
+
+                const data: {
+                    googleMapsUrl: string | null;
+                    isTemporarilyClosed: boolean;
+                    temporaryClosureReason: string | null;
+                    businessHours: BusinessHour[];
+                } = await response.json();
+
+                if (controller.signal.aborted) return;
+
+                setGoogleMapsUrl(data.googleMapsUrl ?? "");
+                setIsTemporarilyClosed(data.isTemporarilyClosed);
+                setTemporaryClosureReason(
+                    data.temporaryClosureReason ?? "",
+                );
+                setBusinessHours(data.businessHours);
+            } catch (error) {
+                if (controller.signal.aborted) return;
+
+                setLoadError(
+                    error instanceof Error
+                        ? error.message
+                        : "Ocurrió un error al cargar la configuración.",
+                );
+            } finally {
+                if (!controller.signal.aborted) {
+                    setIsLoading(false);
+                }
+            }
+        }
+
+        void loadPublicInfo();
+
+        return () => controller.abort();
+    }, []);
+
+
+
     return (
         <div
             style={{
@@ -28,6 +96,29 @@ export default function CompanyPublicInfoForm() {
                 gap: 16,
             }}
         >
+
+            {isLoading && (
+                <p role="status" style={{ fontSize: 13, color: "#6b7280" }}>
+                    Cargando información del negocio...
+                </p>
+            )}
+
+            {loadError && (
+                <p
+                    role="alert"
+                    style={{
+                        fontSize: 13,
+                        color: "#b91c1c",
+                        backgroundColor: "#fef2f2",
+                        border: "1px solid #fecaca",
+                        borderRadius: 8,
+                        padding: 12,
+                    }}
+                >
+                    {loadError}
+                </p>
+            )}
+
             <div>
                 <h3
                     style={{
@@ -70,6 +161,7 @@ export default function CompanyPublicInfoForm() {
                     onChange={(event) =>
                         setGoogleMapsUrl(event.target.value)
                     }
+                    disabled={isLoading || loadError !== null}
                     placeholder="https://maps.google.com/..."
                     maxLength={2048}
                     autoComplete="url"
@@ -100,12 +192,14 @@ export default function CompanyPublicInfoForm() {
             <CompanyBusinessHoursEditor
                 value={businessHours}
                 onChange={setBusinessHours}
+                disabled={isLoading || loadError !== null}
             />
             <CompanyTemporaryClosure
                 isTemporarilyClosed={isTemporarilyClosed}
                 temporaryClosureReason={temporaryClosureReason}
                 onClosedChange={setIsTemporarilyClosed}
                 onReasonChange={setTemporaryClosureReason}
+                disabled={isLoading || loadError !== null}
             />
 
 
