@@ -22,6 +22,19 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
+
+/* ---------- public catalog: GET only ---------- */
+
+const publicCatalogRoute =
+  /^\/api\/public\/companies\/[^/]+\/catalog\/?$/.test(
+    pathname,
+  );
+
+if (publicCatalogRoute && req.method === "GET") {
+  return NextResponse.next();
+}
+
+
   /* ---------- cookie OR Authorization header ---------- */
   const cookieToken = req.cookies.get("auth_token")?.value
 
