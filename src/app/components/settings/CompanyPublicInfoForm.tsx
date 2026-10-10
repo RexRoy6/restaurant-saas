@@ -6,6 +6,7 @@ import CompanyBusinessHoursEditor, {
     DEFAULT_BUSINESS_HOURS,
     type BusinessHour,
 } from "./CompanyBusinessHoursEditor";
+import CompanyTemporaryClosure from "./CompanyTemporaryClosure";
 
 export default function CompanyPublicInfoForm() {
     const [googleMapsUrl, setGoogleMapsUrl] = useState("");
@@ -13,6 +14,11 @@ export default function CompanyPublicInfoForm() {
         useState<BusinessHour[]>(() =>
             DEFAULT_BUSINESS_HOURS.map((day) => ({ ...day })),
         );
+    const [isTemporarilyClosed, setIsTemporarilyClosed] =
+        useState(false);
+
+    const [temporaryClosureReason, setTemporaryClosureReason] =
+        useState("");
 
     return (
         <div
@@ -95,6 +101,13 @@ export default function CompanyPublicInfoForm() {
                 value={businessHours}
                 onChange={setBusinessHours}
             />
+            <CompanyTemporaryClosure
+                isTemporarilyClosed={isTemporarilyClosed}
+                temporaryClosureReason={temporaryClosureReason}
+                onClosedChange={setIsTemporarilyClosed}
+                onReasonChange={setTemporaryClosureReason}
+            />
+
 
         </div>
     );
