@@ -93,4 +93,12 @@ export const RBAC_CONFIG: RbacRoute[] = [
       //POST: ["owner"],
     }
   },
+  // es para pruebas
+  //   {
+  //   pattern: "/api/dev.*",
+  //   methods: {
+  //     GET: ["owner"],
+  //     POST: ["owner"],
+  //   }
+  // },
 ]
