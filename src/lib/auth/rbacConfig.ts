@@ -41,7 +41,8 @@ export const RBAC_CONFIG: RbacRoute[] = [
       GET: ["admin","owner","employee"],
       POST: ["owner"],
       PATCH: ["owner"],
-      DELETE: ["owner"]
+      DELETE: ["owner"],
+      PUT: ["owner"],
     }
   },
   {
