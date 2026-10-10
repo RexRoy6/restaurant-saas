@@ -23,6 +23,11 @@ export default function CompanyPublicInfoForm() {
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
 
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+
+
 
 
     useEffect(() => {
@@ -85,6 +90,68 @@ export default function CompanyPublicInfoForm() {
 
         return () => controller.abort();
     }, []);
+
+
+    async function handleSave() {
+        if (isLoading || isSaving || loadError) return;
+
+        setIsSaving(true);
+        setSaveError(null);
+        setSaveSuccess(false);
+
+        try {
+            const response = await fetch(
+                "/api/company/public-info",
+                {
+                    method: "PUT",
+                    credentials: "same-origin",
+                    cache: "no-store",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        googleMapsUrl: googleMapsUrl.trim() || null,
+                        isTemporarilyClosed,
+                        temporaryClosureReason:
+                            isTemporarilyClosed
+                                ? temporaryClosureReason.trim() || null
+                                : null,
+                        businessHours,
+                    }),
+                },
+            );
+
+            if (!response.ok) {
+                let message = "No se pudo guardar la configuración.";
+
+                if (response.status === 401) {
+                    message = "Tu sesión ha expirado. Inicia sesión nuevamente.";
+                } else if (response.status === 403) {
+                    message = "No tienes permisos para modificar esta configuración.";
+                } else {
+                    const errorData: { error?: string } =
+                        await response.json().catch(() => ({}));
+
+                    if (typeof errorData.error === "string") {
+                        message = errorData.error;
+                    }
+                }
+
+                throw new Error(message);
+            }
+
+            setSaveSuccess(true);
+        } catch (error) {
+            setSaveError(
+                error instanceof Error
+                    ? error.message
+                    : "Ocurrió un error inesperado al guardar.",
+            );
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
 
 
 
@@ -161,7 +228,7 @@ export default function CompanyPublicInfoForm() {
                     onChange={(event) =>
                         setGoogleMapsUrl(event.target.value)
                     }
-                    disabled={isLoading || loadError !== null}
+                    disabled={isLoading || isSaving || loadError !== null}
                     placeholder="https://maps.google.com/..."
                     maxLength={2048}
                     autoComplete="url"
@@ -192,15 +259,86 @@ export default function CompanyPublicInfoForm() {
             <CompanyBusinessHoursEditor
                 value={businessHours}
                 onChange={setBusinessHours}
-                disabled={isLoading || loadError !== null}
+                disabled={isLoading || isSaving || loadError !== null}
             />
             <CompanyTemporaryClosure
                 isTemporarilyClosed={isTemporarilyClosed}
                 temporaryClosureReason={temporaryClosureReason}
                 onClosedChange={setIsTemporarilyClosed}
                 onReasonChange={setTemporaryClosureReason}
-                disabled={isLoading || loadError !== null}
+                disabled={isLoading || isSaving || loadError !== null}
             />
+
+
+            <div
+                style={{
+                    borderTop: "1px solid #e5e7eb",
+                    paddingTop: 20,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                }}
+            >
+                {saveError && (
+                    <p
+                        role="alert"
+                        style={{
+                            fontSize: 13,
+                            color: "#b91c1c",
+                            backgroundColor: "#fef2f2",
+                            border: "1px solid #fecaca",
+                            borderRadius: 8,
+                            padding: 12,
+                            margin: 0,
+                        }}
+                    >
+                        {saveError}
+                    </p>
+                )}
+
+                {saveSuccess && (
+                    <p
+                        role="status"
+                        style={{
+                            fontSize: 13,
+                            color: "#166534",
+                            backgroundColor: "#f0fdf4",
+                            border: "1px solid #bbf7d0",
+                            borderRadius: 8,
+                            padding: 12,
+                            margin: 0,
+                        }}
+                    >
+                        Información pública guardada correctamente.
+                    </p>
+                )}
+
+                <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={isLoading || isSaving || loadError !== null}
+                    style={{
+                        alignSelf: "flex-start",
+                        padding: "10px 18px",
+                        backgroundColor:
+                            isLoading || isSaving || loadError !== null
+                                ? "#9ca3af"
+                                : "#111827",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: 8,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor:
+                            isLoading || isSaving || loadError !== null
+                                ? "not-allowed"
+                                : "pointer",
+                    }}
+                >
+                    {isSaving ? "Guardando..." : "Guardar cambios"}
+                </button>
+            </div>
+
 
 
         </div>
