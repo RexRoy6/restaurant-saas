@@ -3,14 +3,15 @@ import { notFound } from "next/navigation";
 
 import { getPublicCatalog } from "@/modules/publicCatalog/server/getPublicCatalog";
 
+import { PublicCatalogHeader } from "@/modules/publicCatalog/components/PublicCatalogHeader";
+import { PublicCategorySection } from "@/modules/publicCatalog/components/PublicCategorySection";
+
 type PublicInfoPageProps = {
   params: Promise<{
     slug: string;
   }>;
 };
 
-// Consultar el catálogo en cada petición para reflejar
-// los cambios de disponibilidad sin caché persistente.
 export const dynamic = "force-dynamic";
 
 export default async function PublicInfoPage({
@@ -24,81 +25,65 @@ export default async function PublicInfoPage({
     notFound();
   }
 
-  const priceFormatter = new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: catalog.company.currency,
-  });
-
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-10 text-gray-900">
-      <div className="mx-auto max-w-5xl">
-        {/* Encabezado del negocio */}
-        <header className="mb-10 text-center">
-          <h1 className="text-3xl font-bold">
-            {catalog.company.name}
-          </h1>
+    <main className="min-h-screen bg-[#F8F7F4]">
+      <PublicCatalogHeader
+        companyName={catalog.company.name}
+      />
 
-          <p className="mt-2 text-gray-600">
-            Nuestro menú
-          </p>
-        </header>
-
-        {/* Catálogo vacío */}
+      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
         {catalog.categories.length === 0 ? (
-          <section className="rounded-xl border border-gray-200 bg-white p-8 text-center">
-            <h2 className="text-xl font-semibold">
+          <section className="rounded-2xl border border-gray-200 bg-white px-6 py-14 text-center shadow-sm">
+            <h2 className="text-2xl font-bold text-gray-900">
               Próximamente
             </h2>
 
-            <p className="mt-2 text-gray-600">
+            <p className="mx-auto mt-3 max-w-md text-gray-600">
               Este negocio todavía no tiene productos
               publicados en su catálogo.
             </p>
           </section>
         ) : (
-          <div className="space-y-10">
-            {catalog.categories.map((category) => (
-              <section key={category.name}>
-                <h2 className="mb-5 border-b border-gray-200 pb-3 text-2xl font-semibold">
-                  {category.name}
-                </h2>
+          <>
+            {/* Navegación por categorías */}
+            <nav
+              aria-label="Categorías del menú"
+              className="mb-12"
+            >
+              <h2 className="mb-4 text-lg font-semibold text-gray-900">
+                Explora nuestro menú
+              </h2>
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {category.products.map((product) => (
-                    <article
-                      key={`${category.name}-${product.name}`}
-                      className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <h3 className="text-lg font-semibold">
-                          {product.name}
-                        </h3>
+              <div className="flex flex-wrap gap-2">
+                {catalog.categories.map((category, index) => (
+                  <a
+                    key={`${category.name}-${index}`}
+                    href={`#category-${index}`}
+                    className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-[#172D29] hover:bg-[#172D29] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#172D29]"
+                  >
+                    {category.name}
+                  </a>
+                ))}
+              </div>
+            </nav>
 
-                        <span className="whitespace-nowrap font-semibold">
-                          {priceFormatter.format(
-                            product.priceInCents / 100,
-                          )}
-                        </span>
-                      </div>
-
-                      <div className="mt-4">
-                        {product.isAvailable ? (
-                          <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
-                            Disponible
-                          </span>
-                        ) : (
-                          <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-800">
-                            No disponible
-                          </span>
-                        )}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
+            {/* Secciones del catálogo */}
+            <div className="space-y-12">
+              {catalog.categories.map((category, index) => (
+                <PublicCategorySection
+                  key={`${category.name}-${index}`}
+                  category={category}
+                  currency={catalog.company.currency}
+                  sectionId={`category-${index}`}
+                />
+              ))}
+            </div>
+          </>
         )}
+
+        <footer className="mt-16 border-t border-gray-200 pt-6 text-center text-xs text-gray-500">
+          Menú de {catalog.company.name}
+        </footer>
       </div>
     </main>
   );
