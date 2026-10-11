@@ -30,6 +30,9 @@ export function useChecks() {
   const [error, setError] =
     useState<string | null>(null);
 
+  const [syncError, setSyncError] =
+    useState<string | null>(null);
+
   //refresh
   // const isFetchingRef = useRef(false);
   const activeRequestRef = useRef<Promise<void> | null>(null);
@@ -53,17 +56,25 @@ export function useChecks() {
             setLoading(true);
           }
 
-          setError(null);
+          if (!silent) {
+            setError(null);
+          }
 
           const data = await getChecks();
 
           setChecks(data);
+          setSyncError(null);
         } catch (error) {
-          setError(
+          const message =
             error instanceof Error
               ? error.message
-              : "No se pudieron cargar las cuentas",
-          );
+              : "No se pudieron cargar las cuentas";
+
+          if (silent) {
+            setSyncError(message);
+          } else {
+            setError(message);
+          }
         } finally {
           if (!silent) {
             setLoading(false);
@@ -146,6 +157,7 @@ export function useChecks() {
     loading,
     saving,
     error,
+    syncError,
     loadChecks,
     addCheck,
   };
