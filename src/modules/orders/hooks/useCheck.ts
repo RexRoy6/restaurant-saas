@@ -41,10 +41,13 @@ export function useCheck(
     const clearError = () => {
         setError(null);
     };
+    const [syncError, setSyncError] =
+        useState<string | null>(null);
 
 
-    const loadCheck =
-        useCallback(async () => {
+
+    const loadCheck = useCallback(
+        async (silent = false) => {
             if (checkId === null) {
                 setCheck(null);
                 setLoading(false);
@@ -52,27 +55,40 @@ export function useCheck(
             }
 
             try {
-                setLoading(true);
-                setError(null);
+                if (!silent) {
+                    setLoading(true);
+                    setError(null);
+                }
 
-                const data =
-                    await getCheck(checkId);
+                const data = await getCheck(checkId);
 
                 setCheck(data);
+                setSyncError(null);
             } catch (error) {
-                setError(
+                const message =
                     error instanceof Error
                         ? error.message
-                        : "No se pudo cargar la cuenta",
-                );
+                        : "No se pudo cargar la cuenta";
+
+                if (silent) {
+                    setSyncError(message);
+                } else {
+                    setError(message);
+                }
             } finally {
-                setLoading(false);
+                if (!silent) {
+                    setLoading(false);
+                }
             }
-        }, [checkId]);
+        },
+        [checkId],
+    );
+
 
     useEffect(() => {
         void loadCheck();
     }, [loadCheck]);
+
 
     const addOrder = async (
         input: CreateOrderInput,
@@ -233,6 +249,7 @@ export function useCheck(
         loading,
         saving,
         error,
+        syncError,
 
         loadCheck,
         addOrder,
