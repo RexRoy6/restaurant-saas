@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -29,29 +30,126 @@ export function useChecks() {
   const [error, setError] =
     useState<string | null>(null);
 
-  const loadChecks =
-    useCallback(async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const [syncError, setSyncError] =
+    useState<string | null>(null);
 
-        const data =
-          await getChecks();
+  //refresh
+  const activeRequestRef = useRef<Promise<void> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(false);
 
-        setChecks(data);
-      } catch (error) {
-        setError(
-          error instanceof Error
-            ? error.message
-            : "No se pudieron cargar las cuentas",
-        );
-      } finally {
-        setLoading(false);
+  const loadChecks = useCallback(
+    async (silent = false) => {
+      if (!mountedRef.current) {
+        return;
       }
-    }, []);
+
+      // El polling omite su ciclo si hay otra consulta.
+      if (silent && activeRequestRef.current) {
+        return;
+      }
+
+      // Las actualizaciones manuales esperan su turno.
+      while (activeRequestRef.current) {
+        await activeRequestRef.current;
+
+        if (!mountedRef.current) {
+          return;
+        }
+      }
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      const request = (async () => {
+        try {
+          if (!silent) {
+            setLoading(true);
+            setError(null);
+          }
+
+          const data = await getChecks(controller.signal);
+
+          if (mountedRef.current && !controller.signal.aborted) {
+            setChecks(data);
+            setSyncError(null);
+          }
+        } catch (error) {
+          if (
+            controller.signal.aborted ||
+            !mountedRef.current
+          ) {
+            return;
+          }
+
+          const message =
+            error instanceof Error
+              ? error.message
+              : "No se pudieron cargar las cuentas";
+
+          if (silent) {
+            setSyncError(message);
+          } else {
+            setError(message);
+          }
+        } finally {
+          if (mountedRef.current && !silent) {
+            setLoading(false);
+          }
+        }
+      })();
+
+      activeRequestRef.current = request;
+
+      try {
+        await request;
+      } finally {
+        if (activeRequestRef.current === request) {
+          activeRequestRef.current = null;
+        }
+
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+        }
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
+    mountedRef.current = true;
+
     void loadChecks();
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void loadChecks(true);
+      }
+    }, 5000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void loadChecks(true);
+      }
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange,
+    );
+
+    return () => {
+      mountedRef.current = false;
+
+      window.clearInterval(intervalId);
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange,
+      );
+
+      abortControllerRef.current?.abort();
+    };
   }, [loadChecks]);
 
   const addCheck = async (
@@ -86,6 +184,7 @@ export function useChecks() {
     loading,
     saving,
     error,
+    syncError,
     loadChecks,
     addCheck,
   };
