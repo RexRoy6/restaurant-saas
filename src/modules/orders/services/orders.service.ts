@@ -52,15 +52,16 @@ export async function cancelCheck(
   }
 }
 
-export async function getChecks(): Promise<
-  CheckSummary[]
-> {
+export async function getChecks(
+  signal?: AbortSignal,
+): Promise<CheckSummary[]> {
   const response = await fetch(
     "/api/checks",
     {
       method: "GET",
       credentials: "include",
       cache: "no-store",
+      signal,
     },
   );
 
