@@ -29,14 +29,16 @@ export function useChecks() {
   const [error, setError] =
     useState<string | null>(null);
 
-  const loadChecks =
-    useCallback(async () => {
+  const loadChecks = useCallback(
+    async (silent = false) => {
       try {
-        setLoading(true);
+        if (!silent) {
+          setLoading(true);
+        }
+
         setError(null);
 
-        const data =
-          await getChecks();
+        const data = await getChecks();
 
         setChecks(data);
       } catch (error) {
@@ -46,9 +48,13 @@ export function useChecks() {
             : "No se pudieron cargar las cuentas",
         );
       } finally {
-        setLoading(false);
+        if (!silent) {
+          setLoading(false);
+        }
       }
-    }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
     void loadChecks();
