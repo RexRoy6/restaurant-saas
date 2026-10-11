@@ -3,6 +3,7 @@
 import {
     useCallback,
     useEffect,
+    useRef,
     useState,
 } from "react";
 
@@ -43,6 +44,8 @@ export function useCheck(
     };
     const [syncError, setSyncError] =
         useState<string | null>(null);
+    const activeRequestRef =
+        useRef<Promise<void> | null>(null);
 
 
 
@@ -54,35 +57,60 @@ export function useCheck(
                 return;
             }
 
+            // Las consultas automáticas no compiten
+            // con una consulta que ya está en curso.
+            if (silent && activeRequestRef.current) {
+                return;
+            }
+
+            // Las consultas manuales esperan a que
+            // termine cualquier consulta anterior.
+            while (activeRequestRef.current) {
+                await activeRequestRef.current;
+            }
+
+            const request = (async () => {
+                try {
+                    if (!silent) {
+                        setLoading(true);
+                        setError(null);
+                    }
+
+                    const data = await getCheck(checkId);
+
+                    setCheck(data);
+                    setSyncError(null);
+                } catch (error) {
+                    const message =
+                        error instanceof Error
+                            ? error.message
+                            : "No se pudo cargar la cuenta";
+
+                    if (silent) {
+                        setSyncError(message);
+                    } else {
+                        setError(message);
+                    }
+                } finally {
+                    if (!silent) {
+                        setLoading(false);
+                    }
+                }
+            })();
+
+            activeRequestRef.current = request;
+
             try {
-                if (!silent) {
-                    setLoading(true);
-                    setError(null);
-                }
-
-                const data = await getCheck(checkId);
-
-                setCheck(data);
-                setSyncError(null);
-            } catch (error) {
-                const message =
-                    error instanceof Error
-                        ? error.message
-                        : "No se pudo cargar la cuenta";
-
-                if (silent) {
-                    setSyncError(message);
-                } else {
-                    setError(message);
-                }
+                await request;
             } finally {
-                if (!silent) {
-                    setLoading(false);
+                if (activeRequestRef.current === request) {
+                    activeRequestRef.current = null;
                 }
             }
         },
         [checkId],
     );
+
 
 
     useEffect(() => {
