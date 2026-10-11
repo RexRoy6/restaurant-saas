@@ -30,42 +30,70 @@ export function useChecks() {
   const [error, setError] =
     useState<string | null>(null);
 
+  const [syncError, setSyncError] =
+    useState<string | null>(null);
+
   //refresh
-  // const isFetchingRef = useRef(false);
   const activeRequestRef = useRef<Promise<void> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(false);
 
   const loadChecks = useCallback(
     async (silent = false) => {
-      // Si hay una consulta en curso:
-      // - el polling no necesita iniciar otra;
-      // - una actualización manual espera y vuelve a consultar.
-      if (activeRequestRef.current) {
-        if (silent) {
+      if (!mountedRef.current) {
+        return;
+      }
+
+      // El polling omite su ciclo si hay otra consulta.
+      if (silent && activeRequestRef.current) {
+        return;
+      }
+
+      // Las actualizaciones manuales esperan su turno.
+      while (activeRequestRef.current) {
+        await activeRequestRef.current;
+
+        if (!mountedRef.current) {
           return;
         }
-
-        await activeRequestRef.current;
       }
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
       const request = (async () => {
         try {
           if (!silent) {
             setLoading(true);
+            setError(null);
           }
 
-          setError(null);
+          const data = await getChecks(controller.signal);
 
-          const data = await getChecks();
-
-          setChecks(data);
+          if (mountedRef.current && !controller.signal.aborted) {
+            setChecks(data);
+            setSyncError(null);
+          }
         } catch (error) {
-          setError(
+          if (
+            controller.signal.aborted ||
+            !mountedRef.current
+          ) {
+            return;
+          }
+
+          const message =
             error instanceof Error
               ? error.message
-              : "No se pudieron cargar las cuentas",
-          );
+              : "No se pudieron cargar las cuentas";
+
+          if (silent) {
+            setSyncError(message);
+          } else {
+            setError(message);
+          }
         } finally {
-          if (!silent) {
+          if (mountedRef.current && !silent) {
             setLoading(false);
           }
         }
@@ -79,12 +107,18 @@ export function useChecks() {
         if (activeRequestRef.current === request) {
           activeRequestRef.current = null;
         }
+
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+        }
       }
     },
     [],
   );
 
   useEffect(() => {
+    mountedRef.current = true;
+
     void loadChecks();
 
     const intervalId = window.setInterval(() => {
@@ -105,12 +139,16 @@ export function useChecks() {
     );
 
     return () => {
+      mountedRef.current = false;
+
       window.clearInterval(intervalId);
 
       document.removeEventListener(
         "visibilitychange",
         handleVisibilityChange,
       );
+
+      abortControllerRef.current?.abort();
     };
   }, [loadChecks]);
 
@@ -146,6 +184,7 @@ export function useChecks() {
     loading,
     saving,
     error,
+    syncError,
     loadChecks,
     addCheck,
   };

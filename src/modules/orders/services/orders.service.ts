@@ -52,15 +52,16 @@ export async function cancelCheck(
   }
 }
 
-export async function getChecks(): Promise<
-  CheckSummary[]
-> {
+export async function getChecks(
+  signal?: AbortSignal,
+): Promise<CheckSummary[]> {
   const response = await fetch(
     "/api/checks",
     {
       method: "GET",
       credentials: "include",
       cache: "no-store",
+      signal,
     },
   );
 
@@ -73,14 +74,17 @@ export async function getChecks(): Promise<
   return response.json();
 }
 
-export async function getPaidPendingChecks(): Promise<
-  CheckSummary[]
-> {
+
+export async function getPaidPendingChecks(
+  signal?: AbortSignal,
+): Promise<CheckSummary[]> {
   const response = await fetch(
     "/api/checks/paid-pending",
     {
       method: "GET",
       credentials: "include",
+      cache: "no-store",
+      signal,
     },
   );
 
@@ -92,6 +96,7 @@ export async function getPaidPendingChecks(): Promise<
 
   return response.json();
 }
+
 
 export async function getCheck(
   checkId: number,
