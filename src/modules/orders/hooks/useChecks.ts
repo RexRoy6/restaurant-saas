@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -29,8 +30,17 @@ export function useChecks() {
   const [error, setError] =
     useState<string | null>(null);
 
+  //refresh
+  const isFetchingRef = useRef(false);
+
   const loadChecks = useCallback(
     async (silent = false) => {
+      if (isFetchingRef.current) {
+        return;
+      }
+
+      isFetchingRef.current = true;
+
       try {
         if (!silent) {
           setLoading(true);
@@ -48,6 +58,8 @@ export function useChecks() {
             : "No se pudieron cargar las cuentas",
         );
       } finally {
+        isFetchingRef.current = false;
+
         if (!silent) {
           setLoading(false);
         }
@@ -58,6 +70,32 @@ export function useChecks() {
 
   useEffect(() => {
     void loadChecks();
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void loadChecks(true);
+      }
+    }, 5000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void loadChecks(true);
+      }
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange,
+    );
+
+    return () => {
+      window.clearInterval(intervalId);
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange,
+      );
+    };
   }, [loadChecks]);
 
   const addCheck = async (
