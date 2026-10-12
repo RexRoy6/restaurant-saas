@@ -46,6 +46,10 @@ export function useCheck(
         useState<string | null>(null);
     const activeRequestRef =
         useRef<Promise<void> | null>(null);
+    const dataVersionRef = useRef(0);
+
+    const writingRef = useRef(false);
+
 
 
 
@@ -57,17 +61,21 @@ export function useCheck(
                 return;
             }
 
-            // Las consultas automáticas no compiten
-            // con una consulta que ya está en curso.
+            // No iniciar lecturas automáticas mientras
+            // se está modificando la cuenta.
+            if (silent && writingRef.current) {
+                return;
+            }
+
             if (silent && activeRequestRef.current) {
                 return;
             }
 
-            // Las consultas manuales esperan a que
-            // termine cualquier consulta anterior.
             while (activeRequestRef.current) {
                 await activeRequestRef.current;
             }
+
+            const requestVersion = dataVersionRef.current;
 
             const request = (async () => {
                 try {
@@ -78,9 +86,23 @@ export function useCheck(
 
                     const data = await getCheck(checkId);
 
+                    // Ignorar respuestas anteriores a una escritura.
+                    if (
+                        requestVersion !== dataVersionRef.current ||
+                        writingRef.current
+                    ) {
+                        return;
+                    }
+
                     setCheck(data);
                     setSyncError(null);
                 } catch (error) {
+                    if (
+                        requestVersion !== dataVersionRef.current
+                    ) {
+                        return;
+                    }
+
                     const message =
                         error instanceof Error
                             ? error.message
@@ -113,9 +135,20 @@ export function useCheck(
 
 
 
+
     useEffect(() => {
         void loadCheck();
     }, [loadCheck]);
+
+    const beginWrite = () => {
+        writingRef.current = true;
+        dataVersionRef.current += 1;
+    };
+
+    const endWrite = () => {
+        writingRef.current = false;
+    };
+
 
 
     const addOrder = async (
@@ -126,6 +159,9 @@ export function useCheck(
         }
 
         try {
+            beginWrite();
+            setSaving(true);
+            setError(null);
             setSaving(true);
             setError(null);
 
@@ -134,6 +170,7 @@ export function useCheck(
                 input,
             );
 
+            endWrite();
             await loadCheck();
 
             return true;
@@ -146,6 +183,8 @@ export function useCheck(
 
             return false;
         } finally {
+            endWrite();
+            setSaving(false);
             setSaving(false);
         }
     };
@@ -155,6 +194,9 @@ export function useCheck(
         input: UpdateOrderStatusInput,
     ) => {
         try {
+            beginWrite();
+            setSaving(true);
+            setError(null);
             setSaving(true);
             setError(null);
 
@@ -163,6 +205,7 @@ export function useCheck(
                 input,
             );
 
+            endWrite();
             await loadCheck();
 
             return true;
@@ -175,6 +218,7 @@ export function useCheck(
 
             return false;
         } finally {
+            endWrite();
             setSaving(false);
         }
     };
@@ -184,6 +228,9 @@ export function useCheck(
         input: CancelOrderInput,
     ) => {
         try {
+            beginWrite();
+            setSaving(true);
+            setError(null);
             setSaving(true);
             setError(null);
 
@@ -215,6 +262,9 @@ export function useCheck(
         }
 
         try {
+            beginWrite();
+            setSaving(true);
+            setError(null);
             setSaving(true);
             setError(null);
 
@@ -223,6 +273,7 @@ export function useCheck(
                 input,
             );
 
+            endWrite();
             await loadCheck();
 
             return true;
@@ -235,6 +286,7 @@ export function useCheck(
 
             return false;
         } finally {
+            endWrite();
             setSaving(false);
         }
     };
@@ -248,6 +300,9 @@ export function useCheck(
         }
 
         try {
+            beginWrite();
+            setSaving(true);
+            setError(null);
             setSaving(true);
             setError(null);
 
@@ -256,6 +311,7 @@ export function useCheck(
                 input,
             );
 
+            endWrite();
             await loadCheck();
 
             return true;
@@ -268,6 +324,7 @@ export function useCheck(
 
             return false;
         } finally {
+            endWrite();
             setSaving(false);
         }
     };
