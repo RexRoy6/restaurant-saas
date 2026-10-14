@@ -175,10 +175,16 @@ export function useCheck(
     }, [loadCheck]);
 
 
+
     const beginWrite = () => {
         writingRef.current = true;
         dataVersionRef.current += 1;
+
+        // La lectura anterior ya no es útil:
+        // podría contener datos previos a esta escritura.
+        abortControllerRef.current?.abort();
     };
+
 
     const endWrite = () => {
         writingRef.current = false;
@@ -217,7 +223,6 @@ export function useCheck(
             return false;
         } finally {
             endWrite();
-            setSaving(false);
             setSaving(false);
         }
     };
