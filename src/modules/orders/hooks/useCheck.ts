@@ -173,10 +173,17 @@ export function useCheck(
             abortControllerRef.current = null;
         };
     }, [loadCheck]);
+
     useEffect(() => {
         if (checkId === null) {
             return;
         }
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible") {
+                void loadCheck(true);
+            }
+        };
 
         const intervalId = window.setInterval(() => {
             if (document.visibilityState !== "visible") {
@@ -186,10 +193,21 @@ export function useCheck(
             void loadCheck(true);
         }, 5000);
 
+        document.addEventListener(
+            "visibilitychange",
+            handleVisibilityChange,
+        );
+
         return () => {
             window.clearInterval(intervalId);
+
+            document.removeEventListener(
+                "visibilitychange",
+                handleVisibilityChange,
+            );
         };
     }, [checkId, loadCheck]);
+
 
     const beginWrite = (): boolean => {
         // Ya existe una operación de escritura.
