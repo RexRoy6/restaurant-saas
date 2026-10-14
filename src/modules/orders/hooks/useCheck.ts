@@ -173,18 +173,20 @@ export function useCheck(
             abortControllerRef.current = null;
         };
     }, [loadCheck]);
+    const beginWrite = (): boolean => {
+        // Ya existe una operación de escritura.
+        if (writingRef.current) {
+            return false;
+        }
 
-
-
-    const beginWrite = () => {
         writingRef.current = true;
         dataVersionRef.current += 1;
 
-        // La lectura anterior ya no es útil:
-        // podría contener datos previos a esta escritura.
+        // Cancelar una lectura anterior a la escritura.
         abortControllerRef.current?.abort();
-    };
 
+        return true;
+    };
 
     const endWrite = () => {
         writingRef.current = false;
@@ -199,8 +201,11 @@ export function useCheck(
             return false;
         }
 
+        if (!beginWrite()) {
+            return false;
+        }
+
         try {
-            beginWrite();
             setSaving(true);
             setError(null);
 
@@ -231,8 +236,11 @@ export function useCheck(
         orderId: number,
         input: UpdateOrderStatusInput,
     ) => {
+        if (!beginWrite()) {
+            return false;
+        }
+
         try {
-            beginWrite();
             setSaving(true);
             setError(null);
 
@@ -264,11 +272,13 @@ export function useCheck(
         orderId: number,
         input: CancelOrderInput,
     ) => {
+        if (!beginWrite()) {
+            return false;
+        }
+
         try {
-            beginWrite();
             setSaving(true);
             setError(null);
-
             await cancelOrder(
                 orderId,
                 input,
@@ -299,8 +309,11 @@ export function useCheck(
             return false;
         }
 
+        if (!beginWrite()) {
+            return false;
+        }
+
         try {
-            beginWrite();
             setSaving(true);
             setError(null);
 
@@ -334,12 +347,13 @@ export function useCheck(
         if (checkId === null) {
             return false;
         }
+        if (!beginWrite()) {
+            return false;
+        }
 
         try {
-            beginWrite();
             setSaving(true);
             setError(null);
-
             await createPayment(
                 checkId,
                 input,
