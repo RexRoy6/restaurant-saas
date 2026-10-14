@@ -52,6 +52,7 @@ export default function CheckDetail({
         loading,
         saving,
         error,
+        syncError,
         addOrder,
         changeOrderStatus,
         cancelExistingOrder,
@@ -123,11 +124,29 @@ export default function CheckDetail({
     ) => {
         return addOrder(input);
     };
-   // console.log(check);
-
+    // console.log(check);
     return (
         <>
             <div className="space-y-6">
+                {
+                    syncError && (
+                        <div
+                            role="status"
+                            className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                        >
+                            <p className="font-semibold">
+                                Problema de sincronización
+                            </p>
+
+                            <p className="mt-1">
+                                No pudimos actualizar la información de esta cuenta.
+                                Los datos mostrados podrían estar desactualizados.
+                                Verifica tu conexión.
+                            </p>
+                        </div>
+                    )
+                }
+
                 <div>
 
                     {/* <Link
