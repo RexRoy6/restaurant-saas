@@ -36,6 +36,7 @@ export default async function OrdersCheckPage({
 
       <div className="mt-6">
         <CheckDetail
+          key={parsedCheckId}
           checkId={parsedCheckId}
         />
       </div>
