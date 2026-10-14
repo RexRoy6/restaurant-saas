@@ -50,7 +50,7 @@ export function useCheck(
     const abortControllerRef =
         useRef<AbortController | null>(null);
     const requestIdRef = useRef(0);
-
+    const lifecycleVersionRef = useRef(0);
     const writingRef = useRef(false);
     const refreshingAfterWriteRef = useRef(false);
 
@@ -62,6 +62,7 @@ export function useCheck(
                 setLoading(false);
                 return;
             }
+            const lifecycleVersion = lifecycleVersionRef.current;
 
             if (silent && writingRef.current) {
                 return;
@@ -73,10 +74,18 @@ export function useCheck(
 
             while (activeRequestRef.current) {
                 await activeRequestRef.current;
-            }
 
-            // const requestVersion = dataVersionRef.current;
-            // const controller = new AbortController();
+                if (
+                    lifecycleVersion !== lifecycleVersionRef.current
+                ) {
+                    return;
+                }
+            }
+            if (
+                lifecycleVersion !== lifecycleVersionRef.current
+            ) {
+                return;
+            }
             const requestVersion = dataVersionRef.current;
             const requestId = ++requestIdRef.current;
             const controller = new AbortController();
@@ -169,6 +178,7 @@ export function useCheck(
         void loadCheck();
 
         return () => {
+            lifecycleVersionRef.current += 1;
             dataVersionRef.current += 1;
             requestIdRef.current += 1;
 
