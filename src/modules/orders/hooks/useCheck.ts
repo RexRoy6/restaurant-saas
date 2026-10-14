@@ -52,6 +52,7 @@ export function useCheck(
     const requestIdRef = useRef(0);
 
     const writingRef = useRef(false);
+    const refreshingAfterWriteRef = useRef(false);
 
 
     const loadCheck = useCallback(
@@ -93,12 +94,14 @@ export function useCheck(
                         checkId,
                         controller.signal,
                     );
-
                     if (
                         controller.signal.aborted ||
                         requestId !== requestIdRef.current ||
                         requestVersion !== dataVersionRef.current ||
-                        writingRef.current
+                        (
+                            writingRef.current &&
+                            !refreshingAfterWriteRef.current
+                        )
                     ) {
                         return;
                     }
@@ -223,13 +226,10 @@ export function useCheck(
 
         return true;
     };
-
     const endWrite = () => {
+        refreshingAfterWriteRef.current = false;
         writingRef.current = false;
     };
-
-
-
     const addOrder = async (
         input: CreateOrderInput,
     ) => {
@@ -249,10 +249,8 @@ export function useCheck(
                 checkId,
                 input,
             );
-
-            endWrite();
+            refreshingAfterWriteRef.current = true;
             await loadCheck();
-
             return true;
         } catch (error) {
             setError(
@@ -284,10 +282,8 @@ export function useCheck(
                 orderId,
                 input,
             );
-
-            endWrite();
+            refreshingAfterWriteRef.current = true;
             await loadCheck();
-
             return true;
         } catch (error) {
             setError(
@@ -319,10 +315,8 @@ export function useCheck(
                 orderId,
                 input,
             );
-
-            endWrite();
+            refreshingAfterWriteRef.current = true;
             await loadCheck();
-
             return true;
         } catch (error) {
             setError(
@@ -357,10 +351,8 @@ export function useCheck(
                 checkId,
                 input,
             );
-
-            endWrite();
+            refreshingAfterWriteRef.current = true;
             await loadCheck();
-
             return true;
         } catch (error) {
             setError(
@@ -394,10 +386,8 @@ export function useCheck(
                 checkId,
                 input,
             );
-
-            endWrite();
+            refreshingAfterWriteRef.current = true;
             await loadCheck();
-
             return true;
         } catch (error) {
             setError(
