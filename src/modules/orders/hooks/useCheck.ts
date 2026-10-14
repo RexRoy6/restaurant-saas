@@ -47,10 +47,10 @@ export function useCheck(
     const activeRequestRef =
         useRef<Promise<void> | null>(null);
     const dataVersionRef = useRef(0);
+    const abortControllerRef =
+        useRef<AbortController | null>(null);
 
     const writingRef = useRef(false);
-
-
 
 
     const loadCheck = useCallback(
@@ -61,8 +61,6 @@ export function useCheck(
                 return;
             }
 
-            // No iniciar lecturas automáticas mientras
-            // se está modificando la cuenta.
             if (silent && writingRef.current) {
                 return;
             }
@@ -76,6 +74,9 @@ export function useCheck(
             }
 
             const requestVersion = dataVersionRef.current;
+            const controller = new AbortController();
+
+            abortControllerRef.current = controller;
 
             const request = (async () => {
                 try {
@@ -84,10 +85,13 @@ export function useCheck(
                         setError(null);
                     }
 
-                    const data = await getCheck(checkId);
+                    const data = await getCheck(
+                        checkId,
+                        controller.signal,
+                    );
 
-                    // Ignorar respuestas anteriores a una escritura.
                     if (
+                        controller.signal.aborted ||
                         requestVersion !== dataVersionRef.current ||
                         writingRef.current
                     ) {
@@ -97,6 +101,12 @@ export function useCheck(
                     setCheck(data);
                     setSyncError(null);
                 } catch (error) {
+                    // Una cancelación intencional no es un
+                    // error que debamos mostrar al usuario.
+                    if (controller.signal.aborted) {
+                        return;
+                    }
+
                     if (
                         requestVersion !== dataVersionRef.current
                     ) {
@@ -114,7 +124,7 @@ export function useCheck(
                         setError(message);
                     }
                 } finally {
-                    if (!silent) {
+                    if (!silent && !controller.signal.aborted) {
                         setLoading(false);
                     }
                 }
@@ -128,17 +138,29 @@ export function useCheck(
                 if (activeRequestRef.current === request) {
                     activeRequestRef.current = null;
                 }
+
+                if (abortControllerRef.current === controller) {
+                    abortControllerRef.current = null;
+                }
             }
         },
         [checkId],
     );
 
 
-
-
     useEffect(() => {
         void loadCheck();
+
+        return () => {
+            // Invalidar cualquier respuesta anterior.
+            dataVersionRef.current += 1;
+
+            // Cancelar la consulta GET pendiente.
+            abortControllerRef.current?.abort();
+            abortControllerRef.current = null;
+        };
     }, [loadCheck]);
+
 
     const beginWrite = () => {
         writingRef.current = true;
