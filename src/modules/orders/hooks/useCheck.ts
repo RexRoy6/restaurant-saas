@@ -162,8 +162,6 @@ export function useCheck(
             beginWrite();
             setSaving(true);
             setError(null);
-            setSaving(true);
-            setError(null);
 
             await createOrder(
                 checkId,
@@ -197,8 +195,6 @@ export function useCheck(
             beginWrite();
             setSaving(true);
             setError(null);
-            setSaving(true);
-            setError(null);
 
             await updateOrderStatus(
                 orderId,
@@ -223,6 +219,7 @@ export function useCheck(
         }
     };
 
+
     const cancelExistingOrder = async (
         orderId: number,
         input: CancelOrderInput,
@@ -231,14 +228,13 @@ export function useCheck(
             beginWrite();
             setSaving(true);
             setError(null);
-            setSaving(true);
-            setError(null);
 
             await cancelOrder(
                 orderId,
                 input,
             );
 
+            endWrite();
             await loadCheck();
 
             return true;
@@ -251,9 +247,11 @@ export function useCheck(
 
             return false;
         } finally {
+            endWrite();
             setSaving(false);
         }
     };
+
     const cancelCurrentCheck = async (
         input: CancelCheckInput,
     ) => {
@@ -263,8 +261,6 @@ export function useCheck(
 
         try {
             beginWrite();
-            setSaving(true);
-            setError(null);
             setSaving(true);
             setError(null);
 
@@ -301,8 +297,6 @@ export function useCheck(
 
         try {
             beginWrite();
-            setSaving(true);
-            setError(null);
             setSaving(true);
             setError(null);
 
