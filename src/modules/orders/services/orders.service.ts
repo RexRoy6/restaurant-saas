@@ -98,8 +98,10 @@ export async function getPaidPendingChecks(
 }
 
 
+
 export async function getCheck(
   checkId: number,
+  signal?: AbortSignal,
 ): Promise<Check> {
   const response = await fetch(
     `/api/checks/${checkId}`,
@@ -107,6 +109,7 @@ export async function getCheck(
       method: "GET",
       credentials: "include",
       cache: "no-store",
+      signal,
     },
   );
 
@@ -118,6 +121,7 @@ export async function getCheck(
 
   return response.json();
 }
+
 export async function createCheck(
   input: CreateCheckInput,
 ): Promise<{ id: number }> {
