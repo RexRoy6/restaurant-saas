@@ -49,6 +49,7 @@ export function useCheck(
     const dataVersionRef = useRef(0);
     const abortControllerRef =
         useRef<AbortController | null>(null);
+    const requestIdRef = useRef(0);
 
     const writingRef = useRef(false);
 
@@ -73,7 +74,10 @@ export function useCheck(
                 await activeRequestRef.current;
             }
 
+            // const requestVersion = dataVersionRef.current;
+            // const controller = new AbortController();
             const requestVersion = dataVersionRef.current;
+            const requestId = ++requestIdRef.current;
             const controller = new AbortController();
 
             abortControllerRef.current = controller;
@@ -92,6 +96,7 @@ export function useCheck(
 
                     if (
                         controller.signal.aborted ||
+                        requestId !== requestIdRef.current ||
                         requestVersion !== dataVersionRef.current ||
                         writingRef.current
                     ) {
@@ -101,6 +106,12 @@ export function useCheck(
                     setCheck(data);
                     setSyncError(null);
                 } catch (error) {
+                    if (
+                        requestId !== requestIdRef.current ||
+                        requestVersion !== dataVersionRef.current
+                    ) {
+                        return;
+                    }
                     // Una cancelación intencional no es un
                     // error que debamos mostrar al usuario.
                     if (controller.signal.aborted) {
@@ -124,7 +135,10 @@ export function useCheck(
                         setError(message);
                     }
                 } finally {
-                    if (!silent && !controller.signal.aborted) {
+                    if (
+                        !silent &&
+                        requestId === requestIdRef.current
+                    ) {
                         setLoading(false);
                     }
                 }
@@ -152,10 +166,9 @@ export function useCheck(
         void loadCheck();
 
         return () => {
-            // Invalidar cualquier respuesta anterior.
             dataVersionRef.current += 1;
+            requestIdRef.current += 1;
 
-            // Cancelar la consulta GET pendiente.
             abortControllerRef.current?.abort();
             abortControllerRef.current = null;
         };
