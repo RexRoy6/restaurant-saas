@@ -173,6 +173,24 @@ export function useCheck(
             abortControllerRef.current = null;
         };
     }, [loadCheck]);
+    useEffect(() => {
+        if (checkId === null) {
+            return;
+        }
+
+        const intervalId = window.setInterval(() => {
+            if (document.visibilityState !== "visible") {
+                return;
+            }
+
+            void loadCheck(true);
+        }, 5000);
+
+        return () => {
+            window.clearInterval(intervalId);
+        };
+    }, [checkId, loadCheck]);
+
     const beginWrite = (): boolean => {
         // Ya existe una operación de escritura.
         if (writingRef.current) {
