@@ -1,0 +1,195 @@
+
+.card {
+  width: 100%;
+  max-width: 460px;
+  padding: clamp(24px, 5vw, 40px);
+  background: #ffffff;
+  color: #242424;
+  border-radius: 24px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.headerIcon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  background: #eeeeff;
+  color: #535bf2;
+  border-radius: 15px;
+  font-size: 27px;
+}
+
+.header h3 {
+  margin: 0 0 8px;
+  font-size: clamp(24px, 4vw, 29px);
+  line-height: 1.2;
+  letter-spacing: -0.7px;
+}
+
+.header p {
+  margin: 0;
+  color: #71717a;
+  font-size: 14px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #373747;
+}
+
+.field input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 50px;
+  padding: 12px 14px;
+  border: 1px solid #dcdce5;
+  border-radius: 10px;
+  background: #fafaff;
+  color: #242424;
+  font-size: 16px;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.field input::placeholder {
+  color: #9292a2;
+}
+
+.field input:focus {
+  outline: none;
+  border-color: #646cff;
+  box-shadow: 0 0 0 3px rgba(100, 108, 255, 0.15);
+}
+
+.field input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.passwordWrapper {
+  position: relative;
+}
+
+.passwordWrapper input {
+  padding-right: 55px;
+}
+
+.showPassword {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  padding: 10px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #77778a;
+  cursor: pointer;
+}
+
+.showPassword:hover {
+  background: #f0f0ff;
+  color: #535bf2;
+}
+
+.showPassword svg {
+  width: 20px;
+  height: 20px;
+}
+
+.submitButton {
+  min-height: 52px;
+  margin-top: 6px;
+  padding: 12px 18px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  border-radius: 10px;
+  background: #646cff;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+
+.submitButton:hover:not(:disabled) {
+  background: #535bf2;
+  transform: translateY(-1px);
+}
+
+.submitButton:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.footerText {
+  margin: 26px 0 0;
+  padding-top: 22px;
+  border-top: 1px solid #ececf3;
+  text-align: center;
+  color: #77778a;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 26px 20px;
+    border-radius: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+
+  .submitButton {
+    transition: none;
+  }
+}

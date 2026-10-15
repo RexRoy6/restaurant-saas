@@ -1,3 +1,4 @@
+
 @import "tailwindcss";
 
 @theme {
@@ -7,26 +8,87 @@
 
 @layer base {
   :root {
-    /* Minimalismo Corporativo */
-    --background: #f9fafb; /* Fondo gris muy claro para contrastar las tarjetas */
-    --foreground: #111827; /* Texto principal negro/gris muy oscuro */
-    
+    /* ========================================
+       TEMA CORPORATIVO EXISTENTE
+       Se conserva para admin y company
+    ======================================== */
+
+    --background: #f9fafb;
+    --foreground: #111827;
+
     --card: #ffffff;
     --card-foreground: #111827;
-    
-    --border: #e5e7eb; /* Gris claro para los separadores sutiles */
-    --text-muted: #6b7280; /* Gris medio para correos y textos inactivos */
+
+    --border: #e5e7eb;
+    --text-muted: #6b7280;
+
+    /* ========================================
+       IDENTIDAD VISUAL HOSPIHOST
+       Nueva paleta para la landing
+    ======================================== */
+
+    --hospi-primary: #646cff;
+    --hospi-primary-hover: #535bf2;
+
+    --hospi-background: #242424;
+    --hospi-surface: #1a1a1a;
+    --hospi-surface-light: #303039;
+
+    --hospi-text: #ffffff;
+    --hospi-text-muted: #c9c9dc;
+
+    --hospi-border: rgba(255, 255, 255, 0.12);
+
+    /* ========================================
+       CONFIGURACIÓN GENERAL
+    ======================================== */
+
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    scroll-behavior: smooth;
   }
 
   body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+
     background-color: var(--background);
     color: var(--foreground);
+
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Aseguramos feedback visual de interactividad por defecto */
-  button, a {
+  button,
+  a {
     cursor: pointer;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 3px solid var(--hospi-primary);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 }
