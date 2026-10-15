@@ -1,7 +1,5 @@
 
-import type {
-  PublicCatalogCategory,
-} from "@/modules/publicCatalog/server/getPublicCatalog";
+import type { PublicCatalogCategory } from "@/modules/publicCatalog/server/getPublicCatalog";
 
 import { PublicProductCard } from "./PublicProductCard";
 
@@ -20,25 +18,32 @@ export function PublicCategorySection({
     <section
       id={sectionId}
       aria-labelledby={`${sectionId}-title`}
-      className="scroll-mt-8"
+      className="scroll-mt-28"
     >
-      <div className="mb-5 border-b border-gray-200 pb-4">
-        <h2
-          id={`${sectionId}-title`}
-          className="text-2xl font-bold tracking-tight text-gray-900"
-        >
-          {category.name}
-        </h2>
+      <div className="mb-6 flex items-end justify-between gap-4 border-b border-[#E4E0D7] pb-5">
+        <div className="min-w-0">
+          <div
+            aria-hidden="true"
+            className="mb-3 h-1 w-10 rounded-full bg-[#C9A66B]"
+          />
 
-        <p className="mt-1 text-sm text-gray-500">
-          {category.products.length}{" "}
-          {category.products.length === 1
-            ? "producto"
-            : "productos"}
-        </p>
+          <h2
+            id={`${sectionId}-title`}
+            className="break-words text-2xl font-extrabold tracking-tight text-[#172D29] sm:text-3xl"
+          >
+            {category.name}
+          </h2>
+
+          <p className="mt-2 text-sm text-[#738078]">
+            {category.products.length}{" "}
+            {category.products.length === 1
+              ? "producto"
+              : "productos"}
+          </p>
+        </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {category.products.map((product, index) => (
           <PublicProductCard
             key={`${product.name}-${index}`}

@@ -4,8 +4,9 @@ import { notFound } from "next/navigation";
 import { getPublicCatalog } from "@/modules/publicCatalog/server/getPublicCatalog";
 
 import { PublicCatalogHeader } from "@/modules/publicCatalog/components/PublicCatalogHeader";
-import { PublicCategorySection } from "@/modules/publicCatalog/components/PublicCategorySection";
 import { PublicBusinessInfo } from "@/modules/publicCatalog/components/PublicBusinessInfo";
+import { PublicCategoryNavigation } from "@/modules/publicCatalog/components/PublicCategoryNavigation";
+import { PublicCategorySection } from "@/modules/publicCatalog/components/PublicCategorySection";
 
 type PublicInfoPageProps = {
     params: Promise<{
@@ -27,16 +28,21 @@ export default async function PublicInfoPage({
     }
 
     return (
-        <main className="min-h-screen bg-[#F8F7F4]">
+        <main className="min-h-screen bg-[#F8F7F4] text-[#172D29]">
+            {/* ENCABEZADO DEL RESTAURANTE */}
             <PublicCatalogHeader
                 companyName={catalog.company.name}
+                openingStatus={catalog.publicInfo.openingStatus}
             />
 
-            <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
-                <PublicBusinessInfo publicInfo={catalog.publicInfo} />
+            <div className="mx-auto max-w-6xl px-4 pt-8 pb-14 sm:px-6 sm:pt-10">
+                {/* INFORMACIÓN DEL NEGOCIO */}
+                <PublicBusinessInfo
+                    publicInfo={catalog.publicInfo}
+                />
 
                 {catalog.categories.length === 0 ? (
-                    <section className="rounded-2xl border border-gray-200 bg-white px-6 py-16 text-center shadow-sm">
+                    <section className="rounded-2xl border border-[#E8E4DC] bg-white px-6 py-16 text-center shadow-sm">
                         <div
                             aria-hidden="true"
                             className="mb-5 text-5xl"
@@ -54,31 +60,36 @@ export default async function PublicInfoPage({
                         </p>
                     </section>
                 ) : (
-                    <>
-                        {/* Navegación por categorías */}
-                        <nav
-                            aria-label="Categorías del menú"
-                            className="mb-12"
-                        >
-                            <h2 className="mb-4 text-lg font-semibold text-gray-900">
-                                Explora nuestro menú
+                    <section
+                        id="menu"
+                        aria-labelledby="menu-title"
+                        className="scroll-mt-6"
+                    >
+                        <div className="mb-6">
+                            <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#987642]">
+                                DESCUBRE NUESTROS SABORES
+                            </span>
+
+                            <h2
+                                id="menu-title"
+                                className="mt-2 text-3xl font-extrabold tracking-tight text-[#172D29] sm:text-4xl"
+                            >
+                                Nuestro menú
                             </h2>
 
-                            <div className="flex flex-wrap gap-2">
-                                {catalog.categories.map((category, index) => (
-                                    <a
-                                        key={`${category.name}-${index}`}
-                                        href={`#category-${index}`}
-                                        className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-[#172D29] hover:bg-[#172D29] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#172D29]"
-                                    >
-                                        {category.name}
-                                    </a>
-                                ))}
-                            </div>
-                        </nav>
+                            <p className="mt-3 text-sm leading-7 text-[#738078] sm:text-base">
+                                Explora nuestras categorías y encuentra
+                                algo que se te antoje.
+                            </p>
+                        </div>
 
-                        {/* Secciones del catálogo */}
-                        <div className="space-y-12">
+                        {/* NAVEGACIÓN STICKY */}
+                        <PublicCategoryNavigation
+                            categories={catalog.categories}
+                        />
+
+                        {/* PRODUCTOS POR CATEGORÍA */}
+                        <div className="space-y-14">
                             {catalog.categories.map((category, index) => (
                                 <PublicCategorySection
                                     key={`${category.name}-${index}`}
@@ -88,11 +99,22 @@ export default async function PublicInfoPage({
                                 />
                             ))}
                         </div>
-                    </>
+                    </section>
                 )}
 
-                <footer className="mt-16 border-t border-gray-200 pt-6 text-center text-xs text-gray-500">
-                    Menú de {catalog.company.name}
+                {/* FOOTER */}
+                <footer className="mt-20 border-t border-[#E4E0D7] pt-8 text-center">
+                    <p className="text-sm font-semibold text-[#172D29]">
+                        {catalog.company.name}
+                    </p>
+
+                    <p className="mt-2 text-xs text-[#738078]">
+                        Gracias por visitarnos.
+                    </p>
+
+                    <p className="mt-5 text-xs text-gray-400">
+                        Menú digital
+                    </p>
                 </footer>
             </div>
         </main>
