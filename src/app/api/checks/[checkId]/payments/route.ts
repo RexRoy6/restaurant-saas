@@ -360,6 +360,7 @@ export async function POST(
                             body.amountInCents,
                         paymentMethod:
                             body.paymentMethod,
+                        idempotencyKey: body.idempotencyKey,
                     },
                 );
 
