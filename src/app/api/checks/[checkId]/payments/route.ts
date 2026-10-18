@@ -158,6 +158,30 @@ export async function POST(
                 if (!check) {
                     throw new Error("CHECK_NOT_FOUND");
                 }
+                const existingPayment = await tenant.findFirstRaw(
+                    payments,
+                    eq(payments.idempotencyKey, body.idempotencyKey),
+                );
+
+                if (existingPayment) {
+                    if (
+                        existingPayment.checkId !== check.id ||
+                        existingPayment.amountInCents !== body.amountInCents ||
+                        existingPayment.paymentMethod !== body.paymentMethod
+                    ) {
+                        throw new Error("IDEMPOTENCY_KEY_CONFLICT");
+                    }
+
+                    return {
+                        alreadyProcessed: true,
+                        payment: {
+                            id: existingPayment.id,
+                            amountInCents: existingPayment.amountInCents,
+                            paymentMethod: existingPayment.paymentMethod,
+                        },
+                    };
+                }
+
 
                 if (check.status !== "OPEN") {
                     throw new Error("CHECK_NOT_OPEN");
