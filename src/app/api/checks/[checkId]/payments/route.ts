@@ -133,7 +133,8 @@ export async function POST(
                  * CHECK
                  * ==========================================
                  */
-                const check = await tenant.findFirst(
+                //evita pagos dobles
+                const check = await tenant.findFirstForUpdate(
                     checks,
                     eq(checks.id, checkId),
                 );
