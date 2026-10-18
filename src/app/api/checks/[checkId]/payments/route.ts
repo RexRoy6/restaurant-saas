@@ -124,6 +124,22 @@ export async function POST(
             );
         }
 
+        if (
+            !("idempotencyKey" in body) ||
+            typeof body.idempotencyKey !== "string" ||
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+                body.idempotencyKey,
+            )
+        ) {
+            return NextResponse.json(
+                {
+                    error: "Invalid idempotency key",
+                },
+                { status: 400 },
+            );
+        }
+
+
         const result = await db.transaction(
             async (tx) => {
                 const tenant = await tenantDb(tx);
