@@ -92,6 +92,7 @@ export type CreateOrderInput = {
 export type CreatePaymentInput = {
   amountInCents: number;
   paymentMethod: PaymentMethod;
+  idempotencyKey: string;
 };
 
 export type CancelOrderInput = {

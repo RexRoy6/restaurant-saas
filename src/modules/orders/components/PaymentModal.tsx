@@ -1,6 +1,5 @@
 "use client";
-
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Banknote,
   CreditCard,
@@ -50,6 +49,11 @@ export default function PaymentModal({
   const [formError, setFormError] =
     useState("");
 
+  const paymentAttemptRef = useRef<{
+    idempotencyKey: string;
+    amountInCents: number;
+    paymentMethod: PaymentMethod;
+  } | null>(null);
   const handleClose = () => {
     if (saving) {
       return;
@@ -112,10 +116,31 @@ export default function PaymentModal({
       return;
     }
 
-    const success = await onPay({
+    const previousAttempt = paymentAttemptRef.current;
+
+    if (
+      previousAttempt &&
+      (
+        previousAttempt.amountInCents !== amountInCents ||
+        previousAttempt.paymentMethod !== paymentMethod
+      )
+    ) {
+      setFormError(
+        "Existe un intento de pago anterior cuyo resultado " +
+        "debe verificarse antes de cambiar el monto o método.",
+      );
+      return;
+    }
+
+    const attempt = previousAttempt ?? {
+      idempotencyKey: crypto.randomUUID(),
       amountInCents,
       paymentMethod,
-    });
+    };
+
+    paymentAttemptRef.current = attempt;
+
+    const success = await onPay(attempt);
 
     if (success) {
       onClose();
