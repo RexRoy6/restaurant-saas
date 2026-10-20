@@ -31,6 +31,49 @@ function formatCurrency(
     currency: "MXN",
   }).format(amountInCents / 100);
 }
+function readStoredPaymentAttempt(
+  storageKey: string,
+): CreatePaymentInput | null {
+  const stored = sessionStorage.getItem(storageKey);
+
+  if (stored === null) {
+    return null;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(stored);
+
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      !("idempotencyKey" in parsed) ||
+      typeof parsed.idempotencyKey !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        parsed.idempotencyKey,
+      ) ||
+      !("amountInCents" in parsed) ||
+      typeof parsed.amountInCents !== "number" ||
+      !Number.isSafeInteger(parsed.amountInCents) ||
+      parsed.amountInCents <= 0 ||
+      !("paymentMethod" in parsed) ||
+      (
+        parsed.paymentMethod !== "CASH" &&
+        parsed.paymentMethod !== "CARD" &&
+        parsed.paymentMethod !== "TRANSFER"
+      )
+    ) {
+      return null;
+    }
+
+    return {
+      idempotencyKey: parsed.idempotencyKey,
+      amountInCents: parsed.amountInCents,
+      paymentMethod: parsed.paymentMethod,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export default function PaymentModal({
   paymentStorageKey,
