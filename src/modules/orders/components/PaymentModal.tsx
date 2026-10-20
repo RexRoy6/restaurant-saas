@@ -149,6 +149,19 @@ export default function PaymentModal({
       paymentMethod,
     };
 
+    try {
+      sessionStorage.setItem(
+        paymentStorageKey,
+        JSON.stringify(attempt),
+      );
+    } catch {
+      setFormError(
+        "No se pudo guardar el intento de pago. " +
+        "No se enviará el cobro para evitar duplicados.",
+      );
+      return;
+    }
+
     paymentAttemptRef.current = attempt;
 
     const success = await onPay(attempt);
