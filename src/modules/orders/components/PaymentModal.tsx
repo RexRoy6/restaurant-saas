@@ -59,6 +59,15 @@ export default function PaymentModal({
       return;
     }
 
+    if (paymentAttemptRef.current !== null) {
+      setFormError(
+        "Ya se envió un intento de pago. " +
+        "No cierres esta ventana hasta confirmar " +
+        "si el pago fue registrado.",
+      );
+      return;
+    }
+
     onClose();
   };
 
