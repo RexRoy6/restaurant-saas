@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Banknote,
   CreditCard,
@@ -99,6 +99,52 @@ export default function PaymentModal({
     amountInCents: number;
     paymentMethod: PaymentMethod;
   } | null>(null);
+  const [storageReady, setStorageReady] = useState(false);
+
+  useEffect(() => {
+    setStorageReady(false);
+
+    try {
+      const storedValue = sessionStorage.getItem(
+        paymentStorageKey,
+      );
+
+      if (storedValue !== null) {
+        const attempt = readStoredPaymentAttempt(
+          paymentStorageKey,
+        );
+
+        if (!attempt) {
+          setFormError(
+            "Existe un intento de pago guardado, " +
+            "pero sus datos no son válidos. " +
+            "No realices otro cobro hasta revisarlo.",
+          );
+          return;
+        }
+
+        paymentAttemptRef.current = attempt;
+
+        setAmount(
+          (attempt.amountInCents / 100).toFixed(2),
+        );
+
+        setPaymentMethod(attempt.paymentMethod);
+
+        setFormError(
+          "Se recuperó un intento de pago anterior. " +
+          "Verifica su resultado antes de continuar.",
+        );
+      }
+
+      setStorageReady(true);
+    } catch {
+      setFormError(
+        "No se pudo acceder al almacenamiento " +
+        "de intentos de pago.",
+      );
+    }
+  }, [paymentStorageKey]);
   const handleClose = () => {
     if (saving) {
       return;
