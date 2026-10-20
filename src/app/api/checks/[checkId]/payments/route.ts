@@ -483,6 +483,16 @@ export async function POST(
                 { status: 403 },
             );
         }
+        if (message === "IDEMPOTENCY_KEY_CONFLICT") {
+            return NextResponse.json(
+                {
+                    error:
+                        "Esta clave de pago ya fue utilizada " +
+                        "para una operación diferente.",
+                },
+                { status: 409 },
+            );
+        }
         if (message === "CHECK_NOT_FOUND") {
             return NextResponse.json(
                 { error: "Check not found" },
