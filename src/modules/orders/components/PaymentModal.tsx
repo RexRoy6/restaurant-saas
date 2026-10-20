@@ -172,6 +172,16 @@ export default function PaymentModal({
     event: React.FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
+
+    if (!storageReady) {
+      setFormError(
+        "No se ha podido verificar el intento " +
+        "de pago guardado. No se enviará " +
+        "ningún cobro.",
+      );
+      return;
+    }
+
     setFormError("");
 
     const normalizedAmount =
