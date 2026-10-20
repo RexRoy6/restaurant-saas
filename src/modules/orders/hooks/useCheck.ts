@@ -392,13 +392,28 @@ export function useCheck(
         try {
             setSaving(true);
             setError(null);
+
             await createPayment(
                 checkId,
                 input,
             );
+
+            // La API ya confirmó el pago.
+            // Un fallo al actualizar la pantalla
+            // no debe convertirlo en un pago fallido.
             refreshingAfterWriteRef.current = true;
-            await loadCheck();
+
+            try {
+                await loadCheck();
+            } catch (refreshError) {
+                console.error(
+                    "Pago confirmado, pero falló la actualización de la cuenta:",
+                    refreshError,
+                );
+            }
+
             return true;
+
         } catch (error) {
             setError(
                 error instanceof Error
