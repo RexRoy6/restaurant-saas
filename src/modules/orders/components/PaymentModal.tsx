@@ -266,6 +266,18 @@ export default function PaymentModal({
     const success = await onPay(attempt);
 
     if (success) {
+      try {
+        sessionStorage.removeItem(paymentStorageKey);
+      } catch {
+        setFormError(
+          "El pago fue confirmado, pero no se pudo " +
+          "limpiar su registro local. " +
+          "No intentes cobrar nuevamente.",
+        );
+        return;
+      }
+
+      paymentAttemptRef.current = null;
       onClose();
     }
   };
