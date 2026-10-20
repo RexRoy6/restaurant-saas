@@ -456,7 +456,12 @@ export async function POST(
 
         return NextResponse.json(
             result,
-            { status: 201 },
+            {
+                status:
+                    "alreadyProcessed" in result
+                        ? 200
+                        : 201,
+            },
         );
 
 
