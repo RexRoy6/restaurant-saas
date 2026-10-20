@@ -13,6 +13,7 @@ import type {
 } from "../types/order";
 
 type PaymentModalProps = {
+  paymentStorageKey: string;
   remainingInCents: number;
   saving: boolean;
   error: string | null;
@@ -32,6 +33,7 @@ function formatCurrency(
 }
 
 export default function PaymentModal({
+  paymentStorageKey,
   remainingInCents,
   saving,
   error,

@@ -47,6 +47,7 @@ export type Payment = {
   paidAt: string;
 };
 export type Check = {
+  companyId: number;
   id: number;
   name: string | null;
   note: string | null;

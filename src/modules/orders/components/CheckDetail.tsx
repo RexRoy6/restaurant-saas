@@ -426,6 +426,7 @@ export default function CheckDetail({
             )}
             {showPaymentModal && (
                 <PaymentModal
+                    paymentStorageKey={`payment-attempt:${check.companyId}:${check.id}`}
                     remainingInCents={
                         check.remainingInCents
                     }
