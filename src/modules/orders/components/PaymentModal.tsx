@@ -100,6 +100,8 @@ export default function PaymentModal({
     paymentMethod: PaymentMethod;
   } | null>(null);
   const [storageReady, setStorageReady] = useState(false);
+  const [paymentPendingVerification, setPaymentPendingVerification] =
+    useState(false);
 
   useEffect(() => {
     setStorageReady(false);
@@ -262,6 +264,7 @@ export default function PaymentModal({
     }
 
     paymentAttemptRef.current = attempt;
+    setPaymentPendingVerification(true);
 
     const success = await onPay(attempt);
 
@@ -278,6 +281,7 @@ export default function PaymentModal({
       }
 
       paymentAttemptRef.current = null;
+      setPaymentPendingVerification(false);
       onClose();
     } else {
       setFormError(
@@ -443,13 +447,17 @@ export default function PaymentModal({
               type="submit"
               disabled={
                 saving ||
+                !storageReady ||
+                paymentPendingVerification ||
                 remainingInCents <= 0
               }
               className="rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving
                 ? "Registrando..."
-                : "Registrar pago"}
+                : paymentPendingVerification
+                  ? "Pago pendiente de verificación"
+                  : "Registrar pago"}
             </button>
           </div>
         </form>
