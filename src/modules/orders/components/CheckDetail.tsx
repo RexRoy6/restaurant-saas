@@ -436,7 +436,8 @@ export default function CheckDetail({
                     )}
                 </div>
                 {check.status === "OPEN" &&
-                    check.remainingInCents > 0 && (
+                    check.remainingInCents > 0 && 
+                    !hasPendingPaymentAttempt && (
                         <div className="flex justify-end">
                             <button
                                 type="button"
