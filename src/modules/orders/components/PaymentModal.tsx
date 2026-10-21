@@ -495,7 +495,31 @@ export default function PaymentModal({
               {error}
             </div>
           )}
+          {paymentPendingVerification && (
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={handleVerifyPayment}
+                disabled={
+                  saving ||
+                  verifyingPayment ||
+                  !storageReady ||
+                  !onVerifyPayment
+                }
+                className="w-full rounded-lg border border-amber-400 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {verifyingPayment
+                  ? "Verificando estado del pago..."
+                  : "Verificar estado del pago"}
+              </button>
 
+              <p className="mt-2 text-xs text-amber-800">
+                Esta consulta no registra otro cobro.
+                El intento original permanece protegido
+                hasta confirmar su resultado.
+              </p>
+            </div>
+          )}
           <div className="mt-6 flex justify-end gap-3">
             <button
               type="button"

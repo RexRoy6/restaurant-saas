@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import {
@@ -74,6 +74,35 @@ export default function CheckDetail({
         showPaymentModal,
         setShowPaymentModal,
     ] = useState(false);
+    const [
+        hasPendingPaymentAttempt,
+        setHasPendingPaymentAttempt,
+    ] = useState(false);
+    useEffect(() => {
+        if (!check) {
+            setHasPendingPaymentAttempt(false);
+            return;
+        }
+
+        const storageKey =
+            `payment-attempt:${check.companyId}:${check.id}`;
+
+        try {
+            const storedAttempt =
+                window.sessionStorage.getItem(storageKey);
+
+            setHasPendingPaymentAttempt(storedAttempt !== null);
+        } catch (error) {
+            console.error(
+                "No se pudo consultar el intento de pago guardado:",
+                error,
+            );
+
+            setHasPendingPaymentAttempt(false);
+        }
+    }, [check?.companyId, check?.id]);
+
+
     const [
         showCancelCheckModal,
         setShowCancelCheckModal,
@@ -422,6 +451,21 @@ export default function CheckDetail({
                             </button>
                         </div>
                     )}
+                {hasPendingPaymentAttempt && (
+                    <div className="flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                clearError();
+                                setShowPaymentModal(true);
+                            }}
+                            disabled={saving}
+                            className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            Verificar pago pendiente
+                        </button>
+                    </div>
+                )}
 
                 <PaymentsHistory
                     payments={check.payments}
