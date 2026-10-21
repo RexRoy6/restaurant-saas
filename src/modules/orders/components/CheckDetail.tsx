@@ -475,6 +475,7 @@ export default function CheckDetail({
                         setShowPaymentModal(false);
                     }}
                     onPay={addPayment}
+                    onVerifyPayment={handleVerifyPayment}
                 />
             )}
             {showCancelCheckModal &&

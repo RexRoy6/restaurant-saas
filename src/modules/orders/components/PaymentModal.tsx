@@ -85,6 +85,7 @@ export default function PaymentModal({
   error,
   onClose,
   onPay,
+  onVerifyPayment,
 }: PaymentModalProps) {
   const [amount, setAmount] =
     useState("");
@@ -105,6 +106,7 @@ export default function PaymentModal({
   const [storageReady, setStorageReady] = useState(false);
   const [paymentPendingVerification, setPaymentPendingVerification] =
     useState(false);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
 
   useEffect(() => {
     setStorageReady(false);
@@ -171,6 +173,64 @@ export default function PaymentModal({
     setAmount(
       (remainingInCents / 100).toFixed(2),
     );
+  };
+  const handleVerifyPayment = async () => {
+    if (
+      saving ||
+      verifyingPayment ||
+      !storageReady ||
+      !paymentPendingVerification
+    ) {
+      return;
+    }
+
+    const attempt = paymentAttemptRef.current;
+
+    if (!attempt || !onVerifyPayment) {
+      setFormError(
+        "No se puede verificar este intento de pago. " +
+        "No realices otro cobro hasta revisarlo.",
+      );
+      return;
+    }
+
+    setVerifyingPayment(true);
+
+    try {
+      const result = await onVerifyPayment(attempt);
+
+      if (result === "CONFIRMED") {
+        setFormError(
+          "Pago confirmado: el servidor encontró " +
+          "el registro con el mismo identificador, " +
+          "monto y método. No vuelvas a cobrarlo.",
+        );
+        return;
+      }
+
+      if (result === "MISMATCH") {
+        setFormError(
+          "ALERTA: existe un pago con este identificador, " +
+          "pero el monto o método no coincide. " +
+          "No realices otro cobro. Solicita una revisión.",
+        );
+        return;
+      }
+
+      setFormError(
+        "El pago todavía no se puede confirmar. " +
+        "El intento permanece bloqueado. " +
+        "No realices otro cobro hasta verificarlo.",
+      );
+    } catch {
+      setFormError(
+        "No se pudo consultar el estado del pago. " +
+        "El intento permanece bloqueado. " +
+        "Verifica tu conexión y vuelve a consultar.",
+      );
+    } finally {
+      setVerifyingPayment(false);
+    }
   };
 
   const handleSubmit = async (
