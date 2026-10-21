@@ -279,6 +279,12 @@ export default function PaymentModal({
 
       paymentAttemptRef.current = null;
       onClose();
+    } else {
+      setFormError(
+        "No se pudo confirmar el resultado del pago. " +
+        "Es posible que ya se haya registrado. " +
+        "No realices otro cobro hasta verificarlo.",
+      );
     }
   };
 

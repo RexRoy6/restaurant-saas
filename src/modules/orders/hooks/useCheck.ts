@@ -141,7 +141,7 @@ export function useCheck(
                             ? error.message
                             : "No se pudo cargar la cuenta";
 
-                    if (silent) {
+                    if (silent || refreshingAfterWriteRef.current) {
                         setSyncError(message);
                     } else {
                         setError(message);
