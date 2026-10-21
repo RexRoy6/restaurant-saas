@@ -21,6 +21,9 @@ type PaymentModalProps = {
   onPay: (
     input: CreatePaymentInput,
   ) => Promise<boolean>;
+  onVerifyPayment?: (
+    input: CreatePaymentInput,
+  ) => Promise<"CONFIRMED" | "PENDING" | "MISMATCH">;
 };
 
 function formatCurrency(
@@ -126,7 +129,7 @@ export default function PaymentModal({
         }
 
         paymentAttemptRef.current = attempt;
-
+        setPaymentPendingVerification(true);
         setAmount(
           (attempt.amountInCents / 100).toFixed(2),
         );

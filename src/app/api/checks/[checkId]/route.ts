@@ -248,6 +248,7 @@ export async function GET(
 
         return {
           id: payment.id,
+          idempotencyKey: payment.idempotencyKey,
           amountInCents:
             payment.amountInCents,
           paymentMethod:

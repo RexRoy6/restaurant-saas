@@ -18,6 +18,7 @@ import CancelOrderModal from "./CancelOrderModal";
 import PaymentModal from "./PaymentModal";
 import PaymentsHistory from "./PaymentsHistory";
 import CancelCheckModal from "./CancelCheckModal";
+import { getCheck } from "../services/orders.service";
 
 type CheckDetailProps = {
     checkId: number;
@@ -116,6 +117,43 @@ export default function CheckDetail({
             (order) =>
                 order.status === "CANCELLED",
         );
+
+    const handleVerifyPayment = async (
+        attempt: Parameters<typeof addPayment>[0],
+    ): Promise<"CONFIRMED" | "PENDING" | "MISMATCH"> => {
+        if (checkId === null) {
+            return "PENDING";
+        }
+
+        try {
+            const latestCheck = await getCheck(checkId);
+
+            const matchingPayment = latestCheck.payments.find(
+                (payment) =>
+                    payment.idempotencyKey === attempt.idempotencyKey,
+            );
+
+            if (!matchingPayment) {
+                return "PENDING";
+            }
+
+            if (
+                matchingPayment.amountInCents !== attempt.amountInCents ||
+                matchingPayment.paymentMethod !== attempt.paymentMethod
+            ) {
+                return "MISMATCH";
+            }
+
+            return "CONFIRMED";
+        } catch (error) {
+            console.error(
+                "No se pudo verificar el estado del pago:",
+                error,
+            );
+
+            return "PENDING";
+        }
+    };
 
     const handleCreateOrder = async (
         input: Parameters<
