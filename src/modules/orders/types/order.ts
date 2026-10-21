@@ -47,6 +47,7 @@ export type Payment = {
   paidAt: string;
 };
 export type Check = {
+  companyId: number;
   id: number;
   name: string | null;
   note: string | null;
@@ -92,6 +93,7 @@ export type CreateOrderInput = {
 export type CreatePaymentInput = {
   amountInCents: number;
   paymentMethod: PaymentMethod;
+  idempotencyKey: string;
 };
 
 export type CancelOrderInput = {

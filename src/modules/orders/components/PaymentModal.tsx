@@ -1,6 +1,5 @@
 "use client";
-
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Banknote,
   CreditCard,
@@ -14,6 +13,7 @@ import type {
 } from "../types/order";
 
 type PaymentModalProps = {
+  paymentStorageKey: string;
   remainingInCents: number;
   saving: boolean;
   error: string | null;
@@ -31,8 +31,52 @@ function formatCurrency(
     currency: "MXN",
   }).format(amountInCents / 100);
 }
+function readStoredPaymentAttempt(
+  storageKey: string,
+): CreatePaymentInput | null {
+  const stored = sessionStorage.getItem(storageKey);
+
+  if (stored === null) {
+    return null;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(stored);
+
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      !("idempotencyKey" in parsed) ||
+      typeof parsed.idempotencyKey !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        parsed.idempotencyKey,
+      ) ||
+      !("amountInCents" in parsed) ||
+      typeof parsed.amountInCents !== "number" ||
+      !Number.isSafeInteger(parsed.amountInCents) ||
+      parsed.amountInCents <= 0 ||
+      !("paymentMethod" in parsed) ||
+      (
+        parsed.paymentMethod !== "CASH" &&
+        parsed.paymentMethod !== "CARD" &&
+        parsed.paymentMethod !== "TRANSFER"
+      )
+    ) {
+      return null;
+    }
+
+    return {
+      idempotencyKey: parsed.idempotencyKey,
+      amountInCents: parsed.amountInCents,
+      paymentMethod: parsed.paymentMethod,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export default function PaymentModal({
+  paymentStorageKey,
   remainingInCents,
   saving,
   error,
@@ -50,8 +94,70 @@ export default function PaymentModal({
   const [formError, setFormError] =
     useState("");
 
+  const paymentAttemptRef = useRef<{
+    idempotencyKey: string;
+    amountInCents: number;
+    paymentMethod: PaymentMethod;
+  } | null>(null);
+  const [storageReady, setStorageReady] = useState(false);
+  const [paymentPendingVerification, setPaymentPendingVerification] =
+    useState(false);
+
+  useEffect(() => {
+    setStorageReady(false);
+
+    try {
+      const storedValue = sessionStorage.getItem(
+        paymentStorageKey,
+      );
+
+      if (storedValue !== null) {
+        const attempt = readStoredPaymentAttempt(
+          paymentStorageKey,
+        );
+
+        if (!attempt) {
+          setFormError(
+            "Existe un intento de pago guardado, " +
+            "pero sus datos no son válidos. " +
+            "No realices otro cobro hasta revisarlo.",
+          );
+          return;
+        }
+
+        paymentAttemptRef.current = attempt;
+
+        setAmount(
+          (attempt.amountInCents / 100).toFixed(2),
+        );
+
+        setPaymentMethod(attempt.paymentMethod);
+
+        setFormError(
+          "Se recuperó un intento de pago anterior. " +
+          "Verifica su resultado antes de continuar.",
+        );
+      }
+
+      setStorageReady(true);
+    } catch {
+      setFormError(
+        "No se pudo acceder al almacenamiento " +
+        "de intentos de pago.",
+      );
+    }
+  }, [paymentStorageKey]);
   const handleClose = () => {
     if (saving) {
+      return;
+    }
+
+    if (paymentAttemptRef.current !== null) {
+      setFormError(
+        "Ya se envió un intento de pago. " +
+        "No cierres esta ventana hasta confirmar " +
+        "si el pago fue registrado.",
+      );
       return;
     }
 
@@ -68,6 +174,16 @@ export default function PaymentModal({
     event: React.FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
+
+    if (!storageReady) {
+      setFormError(
+        "No se ha podido verificar el intento " +
+        "de pago guardado. No se enviará " +
+        "ningún cobro.",
+      );
+      return;
+    }
+
     setFormError("");
 
     const normalizedAmount =
@@ -112,13 +228,67 @@ export default function PaymentModal({
       return;
     }
 
-    const success = await onPay({
+    const previousAttempt = paymentAttemptRef.current;
+
+    if (
+      previousAttempt &&
+      (
+        previousAttempt.amountInCents !== amountInCents ||
+        previousAttempt.paymentMethod !== paymentMethod
+      )
+    ) {
+      setFormError(
+        "Existe un intento de pago anterior cuyo resultado " +
+        "debe verificarse antes de cambiar el monto o método.",
+      );
+      return;
+    }
+
+    const attempt = previousAttempt ?? {
+      idempotencyKey: crypto.randomUUID(),
       amountInCents,
       paymentMethod,
-    });
+    };
+
+    try {
+      sessionStorage.setItem(
+        paymentStorageKey,
+        JSON.stringify(attempt),
+      );
+    } catch {
+      setFormError(
+        "No se pudo guardar el intento de pago. " +
+        "No se enviará el cobro para evitar duplicados.",
+      );
+      return;
+    }
+
+    paymentAttemptRef.current = attempt;
+    setPaymentPendingVerification(true);
+
+    const success = await onPay(attempt);
 
     if (success) {
+      try {
+        sessionStorage.removeItem(paymentStorageKey);
+      } catch {
+        setFormError(
+          "El pago fue confirmado, pero no se pudo " +
+          "limpiar su registro local. " +
+          "No intentes cobrar nuevamente.",
+        );
+        return;
+      }
+
+      paymentAttemptRef.current = null;
+      setPaymentPendingVerification(false);
       onClose();
+    } else {
+      setFormError(
+        "No se pudo confirmar el resultado del pago. " +
+        "Es posible que ya se haya registrado. " +
+        "No realices otro cobro hasta verificarlo.",
+      );
     }
   };
 
@@ -277,13 +447,17 @@ export default function PaymentModal({
               type="submit"
               disabled={
                 saving ||
+                !storageReady ||
+                paymentPendingVerification ||
                 remainingInCents <= 0
               }
               className="rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving
                 ? "Registrando..."
-                : "Registrar pago"}
+                : paymentPendingVerification
+                  ? "Pago pendiente de verificación"
+                  : "Registrar pago"}
             </button>
           </div>
         </form>

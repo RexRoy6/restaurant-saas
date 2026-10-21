@@ -593,7 +593,7 @@ export async function tenantDb(
           : baseWhere,
       );
 
-      const [result] =  await executor
+      const [result] = await executor
         .select({
           total: sum(column),
         })
@@ -621,7 +621,7 @@ export async function tenantDb(
           : baseWhere,
       );
 
-      const [result] =  await executor
+      const [result] = await executor
         .select({
           exists: count(),
         })
@@ -650,7 +650,7 @@ export async function tenantDb(
           : baseWhere,
       );
 
-      const rows =  await executor
+      const rows = await executor
         .select()
         .from(table)
         .where(where);
@@ -670,7 +670,7 @@ export async function tenantDb(
       table: T,
       extraWhere?: SQL,
     ): Promise<TenantRow<T>[]> {
-      const rows =  await executor
+      const rows = await executor
         .select()
         .from(table)
         .where(
@@ -701,7 +701,7 @@ export async function tenantDb(
           : baseWhere,
       );
 
-      const rows =  await executor
+      const rows = await executor
         .select()
         .from(table)
         .where(where)
@@ -710,6 +710,35 @@ export async function tenantDb(
       return rows[0] ?? null;
     },
 
+
+    async findFirstForUpdate<T extends TenantTable>(
+      table: T,
+      extraWhere?: SQL,
+    ): Promise<TenantRow<T> | null> {
+      if (!("rollback" in executor)) {
+        throw new Error(
+          "findFirstForUpdate requires a transaction.",
+        );
+      }
+
+      const baseWhere = isNull(table.deletedAt);
+
+      const where = buildWhere(
+        table,
+        extraWhere
+          ? and(baseWhere, extraWhere)
+          : baseWhere,
+      );
+
+      const rows = await executor
+        .select()
+        .from(table)
+        .where(where)
+        .limit(1)
+        .for("update");
+
+      return (rows[0] as TenantRow<T>) ?? null;
+    },
     /**
      * ========================================================
      * FIND FIRST RAW
@@ -719,7 +748,7 @@ export async function tenantDb(
       table: T,
       extraWhere?: SQL,
     ): Promise<TenantRow<T> | null> {
-      const rows =  await executor
+      const rows = await executor
         .select()
         .from(table)
         .where(
@@ -869,7 +898,7 @@ export async function tenantDb(
         isGlobalAdmin,
       );
 
-      return  executor
+      return executor
         .update(table)
         .set(safeValues)
         .where(where);

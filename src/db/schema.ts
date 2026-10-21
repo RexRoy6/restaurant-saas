@@ -536,6 +536,11 @@ export const payments = mysqlTable(
       PAYMENT_METHODS,
     ).notNull(),
 
+    idempotencyKey: varchar("idempotency_key", {
+      length: 64,
+    }),
+
+
     paidAt: timestamp("paid_at")
       .defaultNow()
       .notNull(),
@@ -554,6 +559,9 @@ export const payments = mysqlTable(
       table.companyId,
       table.paidAt,
     ),
+    idempotencyKeyUnique: uniqueIndex(
+      "payments_idempotency_key_unique",
+    ).on(table.idempotencyKey),
 
     amountPositive: check(
       "payments_amount_positive",
