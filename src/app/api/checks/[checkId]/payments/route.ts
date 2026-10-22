@@ -124,6 +124,22 @@ export async function POST(
             );
         }
 
+        if (
+            !("idempotencyKey" in body) ||
+            typeof body.idempotencyKey !== "string" ||
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+                body.idempotencyKey,
+            )
+        ) {
+            return NextResponse.json(
+                {
+                    error: "Invalid idempotency key",
+                },
+                { status: 400 },
+            );
+        }
+
+
         const result = await db.transaction(
             async (tx) => {
                 const tenant = await tenantDb(tx);
@@ -133,7 +149,8 @@ export async function POST(
                  * CHECK
                  * ==========================================
                  */
-                const check = await tenant.findFirst(
+                //evita pagos dobles
+                const check = await tenant.findFirstForUpdate(
                     checks,
                     eq(checks.id, checkId),
                 );
@@ -141,6 +158,30 @@ export async function POST(
                 if (!check) {
                     throw new Error("CHECK_NOT_FOUND");
                 }
+                const existingPayment = await tenant.findFirstRaw(
+                    payments,
+                    eq(payments.idempotencyKey, body.idempotencyKey),
+                );
+
+                if (existingPayment) {
+                    if (
+                        existingPayment.checkId !== check.id ||
+                        existingPayment.amountInCents !== body.amountInCents ||
+                        existingPayment.paymentMethod !== body.paymentMethod
+                    ) {
+                        throw new Error("IDEMPOTENCY_KEY_CONFLICT");
+                    }
+
+                    return {
+                        alreadyProcessed: true,
+                        payment: {
+                            id: existingPayment.id,
+                            amountInCents: existingPayment.amountInCents,
+                            paymentMethod: existingPayment.paymentMethod,
+                        },
+                    };
+                }
+
 
                 if (check.status !== "OPEN") {
                     throw new Error("CHECK_NOT_OPEN");
@@ -319,6 +360,7 @@ export async function POST(
                             body.amountInCents,
                         paymentMethod:
                             body.paymentMethod,
+                        idempotencyKey: body.idempotencyKey,
                     },
                 );
 
@@ -414,7 +456,12 @@ export async function POST(
 
         return NextResponse.json(
             result,
-            { status: 201 },
+            {
+                status:
+                    "alreadyProcessed" in result
+                        ? 200
+                        : 201,
+            },
         );
 
 
@@ -439,6 +486,16 @@ export async function POST(
             return NextResponse.json(
                 { error: "Forbidden" },
                 { status: 403 },
+            );
+        }
+        if (message === "IDEMPOTENCY_KEY_CONFLICT") {
+            return NextResponse.json(
+                {
+                    error:
+                        "Esta clave de pago ya fue utilizada " +
+                        "para una operación diferente.",
+                },
+                { status: 409 },
             );
         }
         if (message === "CHECK_NOT_FOUND") {

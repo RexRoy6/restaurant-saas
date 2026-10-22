@@ -248,6 +248,7 @@ export async function GET(
 
         return {
           id: payment.id,
+          idempotencyKey: payment.idempotencyKey,
           amountInCents:
             payment.amountInCents,
           paymentMethod:
@@ -282,21 +283,8 @@ export async function GET(
         "INVALID_PAYMENT_STATE",
       );
     }
-
-    // return NextResponse.json({
-    //   id: check.id,
-    //   name: check.name,
-    //   note: check.note,
-    //   status: check.status,
-    //   closedAt: check.closedAt,
-    //   createdAt: check.createdAt,
-
-    //   orders: responseOrders,
-
-    //   totalInCents:
-    //     checkTotalInCents,
-    // });
     return NextResponse.json({
+      companyId: auth.companyId,
       id: check.id,
       name: check.name,
       note: check.note,

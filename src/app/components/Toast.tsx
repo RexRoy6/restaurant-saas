@@ -10,17 +10,27 @@ export default function Toast({
   message: string;
   onClose: () => void;
 }) {
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
   // Efecto de entrada suave
   useEffect(() => {
-    setIsVisible(true);
-    // Auto-ocultar después de 5 segundos
-    const timer = setTimeout(() => {
+    let closeTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const hideTimer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(onClose, 300); // Espera a que termine la animación para desmontar
+
+      closeTimer = setTimeout(() => {
+        onClose();
+      }, 300);
     }, 5000);
-    return () => clearTimeout(timer);
+
+    return () => {
+      clearTimeout(hideTimer);
+
+      if (closeTimer !== undefined) {
+        clearTimeout(closeTimer);
+      }
+    };
   }, [onClose]);
 
   return (
@@ -33,7 +43,7 @@ export default function Toast({
       `}
     >
       <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-      
+
       <div className="flex-1 mr-4">
         <h3 className="text-sm font-bold text-gray-900">Error de conexión</h3>
         <p className="text-sm text-gray-500 mt-1">{message}</p>
