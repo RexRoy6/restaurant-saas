@@ -70,9 +70,11 @@ export async function PATCH(req: NextRequest) {
             message: "Password updated successfully"
         })
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        console.error("Error al cambiar la contraseña:", error)
+
         return NextResponse.json(
-            { error: error.message || "Internal error" },
+            { error: "Internal server error" },
             { status: 500 }
         )
     }
