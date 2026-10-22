@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { Company, User } from "../types/admin";
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
 export function useAdminCompany(companyId: string) {
 
   const [company, setCompany] = useState<Company | null>(null);
@@ -34,8 +42,8 @@ export function useAdminCompany(companyId: string) {
 
         setCompany(companyData);
         setUsers(usersData);
-      } catch (err: any) {
-        setLoadError(err.message);
+      } catch (err: unknown) {
+        setLoadError(getErrorMessage(err, "Error cargando la empresa y sus usuarios"));
       } finally {
         setLoading(false);
       }
@@ -65,8 +73,10 @@ export function useAdminCompany(companyId: string) {
 
       setCompany(updatedCompany);
       setSuspendConfirm(false);
-    } catch (err: any) {
-      setActionError(err.message || "Error suspendiendo la empresa");
+    } catch (err: unknown) {
+      setActionError(
+        getErrorMessage(err, "Error suspendiendo la empresa")
+      );
       setSuspendConfirm(false);
     }
   };
@@ -101,9 +111,9 @@ export function useAdminCompany(companyId: string) {
       setCompany(updatedCompany);
       setReactivateConfirm(false);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       setActionError(
-        err.message || "Error reactivando la empresa"
+        getErrorMessage(err, "Error reactivando la empresa")
       );
       setReactivateConfirm(false);
     }
@@ -130,8 +140,10 @@ export function useAdminCompany(companyId: string) {
       const usersRes = await fetch(`/api/admin/companies/${companyId}/users`);
       const usersData = await usersRes.json();
       setUsers(usersData);
-    } catch (err: any) {
-      setActionError(err.message);
+    } catch (err: unknown) {
+      setActionError(
+        getErrorMessage(err, "Error creando usuario")
+      );
     }
 
   };
@@ -155,8 +167,10 @@ export function useAdminCompany(companyId: string) {
       const usersRes = await fetch(`/api/admin/companies/${companyId}/users`);
       const usersData = await usersRes.json();
       setUsers(usersData);
-    } catch (err: any) {
-      setActionError(err.message);
+    } catch (err: unknown) {
+      setActionError(
+        getErrorMessage(err, "Error desactivando usuario")
+      );
     }
   };
 
@@ -183,8 +197,10 @@ export function useAdminCompany(companyId: string) {
       const usersData = await usersRes.json();
       setUsers(usersData);
 
-    } catch (err: any) {
-      setActionError(err.message);
+    } catch (err: unknown) {
+      setActionError(
+        getErrorMessage(err, "Error reactivando usuario")
+      );
     }
   };
 

@@ -79,28 +79,36 @@ export default function CheckDetail({
         setHasPendingPaymentAttempt,
     ] = useState(false);
     useEffect(() => {
-        if (!check) {
-            setHasPendingPaymentAttempt(false);
-            return;
-        }
-
         const storageKey =
-            `payment-attempt:${check.companyId}:${check.id}`;
+            check
+                ? `payment-attempt:${check.companyId}:${check.id}`
+                : null;
 
-        try {
-            const storedAttempt =
-                window.sessionStorage.getItem(storageKey);
+        const timeoutId = window.setTimeout(() => {
+            if (!storageKey) {
+                setHasPendingPaymentAttempt(false);
+                return;
+            }
 
-            setHasPendingPaymentAttempt(storedAttempt !== null);
-        } catch (error) {
-            console.error(
-                "No se pudo consultar el intento de pago guardado:",
-                error,
-            );
+            try {
+                const storedAttempt =
+                    window.sessionStorage.getItem(storageKey);
 
-            setHasPendingPaymentAttempt(false);
-        }
-    }, [check?.companyId, check?.id]);
+                setHasPendingPaymentAttempt(storedAttempt !== null);
+            } catch (error) {
+                console.error(
+                    "No se pudo consultar el intento de pago guardado:",
+                    error,
+                );
+
+                setHasPendingPaymentAttempt(false);
+            }
+        }, 0);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+        };
+    }, [check]);
 
 
     const [
@@ -436,7 +444,7 @@ export default function CheckDetail({
                     )}
                 </div>
                 {check.status === "OPEN" &&
-                    check.remainingInCents > 0 && 
+                    check.remainingInCents > 0 &&
                     !hasPendingPaymentAttempt && (
                         <div className="flex justify-end">
                             <button

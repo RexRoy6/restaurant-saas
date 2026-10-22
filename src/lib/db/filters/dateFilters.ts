@@ -1,4 +1,8 @@
 import { and, gte, lt } from "drizzle-orm"
+import type { AnyColumn } from "drizzle-orm"
+type DateColumn = AnyColumn<{
+    data: Date
+}>
 
 function startOfDay(date: Date) {
 
@@ -20,7 +24,7 @@ function addDays(date: Date, days: number) {
 
 }
 
-export function today(column: any) {
+export function today(column: DateColumn) {
 
     const start = startOfDay(new Date())
 
@@ -37,7 +41,7 @@ export function today(column: any) {
 }
 
 export function nextDays(
-    column: any,
+    column: DateColumn,
     days: number
 ) {
 
@@ -55,7 +59,7 @@ export function nextDays(
 
 }
 
-export function thisMonth(column: any) {
+export function thisMonth(column: DateColumn) {
 
     const now = new Date()
 
@@ -81,7 +85,7 @@ export function thisMonth(column: any) {
 
 }
 
-export function lastMonth(column: any) {
+export function lastMonth(column: DateColumn) {
 
     const now = new Date()
 

@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation"; 
+import { useRouter } from "next/navigation";
 import { Menu, LogOut } from "lucide-react";
+type TopbarUser = {
+  companyName: string | null;
+  email: string;
+};
 
 export default function Topbar({
   onToggle,
@@ -10,28 +14,9 @@ export default function Topbar({
   onToggle: () => void;
 }) {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<TopbarUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchUser = async () => {
-    try {
-      const res = await fetch("/api/company/me", { credentials: "include" });
-      if (res.status === 401) {
-        router.replace("/");
-        return;
-      }
-      if (!res.ok) {
-        setIsLoading(false);
-        return;
-      }
-      const data = await res.json();
-      setUser(data);
-    } catch (error) {
-      router.replace("/");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
@@ -39,11 +24,50 @@ export default function Topbar({
   };
 
   useEffect(() => {
-    fetchUser();
-  }, []);
+    const controller = new AbortController();
 
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("/api/company/me", {
+          credentials: "include",
+          signal: controller.signal,
+        });
+
+        if (controller.signal.aborted) return;
+
+        if (res.status === 401) {
+          router.replace("/");
+          return;
+        }
+
+        if (!res.ok) {
+          return;
+        }
+
+        const data = await res.json();
+
+        if (controller.signal.aborted) return;
+
+        setUser(data);
+      } catch {
+        if (!controller.signal.aborted) {
+          router.replace("/");
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void fetchUser();
+
+    return () => {
+      controller.abort();
+    };
+  }, [router]);
   return (
-    <header 
+    <header
       className="fixed top-0 left-0 w-full h-[60px] z-30 bg-white border-b border-[var(--border)] flex items-center px-4 md:px-8"
     >
       {/* IZQUIERDA: Botón de hamburguesa visible solo en móviles */}
