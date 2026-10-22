@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import {
@@ -18,6 +18,7 @@ import CancelOrderModal from "./CancelOrderModal";
 import PaymentModal from "./PaymentModal";
 import PaymentsHistory from "./PaymentsHistory";
 import CancelCheckModal from "./CancelCheckModal";
+import { getCheck } from "../services/orders.service";
 
 type CheckDetailProps = {
     checkId: number;
@@ -74,6 +75,43 @@ export default function CheckDetail({
         setShowPaymentModal,
     ] = useState(false);
     const [
+        hasPendingPaymentAttempt,
+        setHasPendingPaymentAttempt,
+    ] = useState(false);
+    useEffect(() => {
+        const storageKey =
+            check
+                ? `payment-attempt:${check.companyId}:${check.id}`
+                : null;
+
+        const timeoutId = window.setTimeout(() => {
+            if (!storageKey) {
+                setHasPendingPaymentAttempt(false);
+                return;
+            }
+
+            try {
+                const storedAttempt =
+                    window.sessionStorage.getItem(storageKey);
+
+                setHasPendingPaymentAttempt(storedAttempt !== null);
+            } catch (error) {
+                console.error(
+                    "No se pudo consultar el intento de pago guardado:",
+                    error,
+                );
+
+                setHasPendingPaymentAttempt(false);
+            }
+        }, 0);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+        };
+    }, [check]);
+
+
+    const [
         showCancelCheckModal,
         setShowCancelCheckModal,
     ] = useState(false);
@@ -116,6 +154,43 @@ export default function CheckDetail({
             (order) =>
                 order.status === "CANCELLED",
         );
+
+    const handleVerifyPayment = async (
+        attempt: Parameters<typeof addPayment>[0],
+    ): Promise<"CONFIRMED" | "PENDING" | "MISMATCH"> => {
+        if (checkId === null) {
+            return "PENDING";
+        }
+
+        try {
+            const latestCheck = await getCheck(checkId);
+
+            const matchingPayment = latestCheck.payments.find(
+                (payment) =>
+                    payment.idempotencyKey === attempt.idempotencyKey,
+            );
+
+            if (!matchingPayment) {
+                return "PENDING";
+            }
+
+            if (
+                matchingPayment.amountInCents !== attempt.amountInCents ||
+                matchingPayment.paymentMethod !== attempt.paymentMethod
+            ) {
+                return "MISMATCH";
+            }
+
+            return "CONFIRMED";
+        } catch (error) {
+            console.error(
+                "No se pudo verificar el estado del pago:",
+                error,
+            );
+
+            return "PENDING";
+        }
+    };
 
     const handleCreateOrder = async (
         input: Parameters<
@@ -369,7 +444,8 @@ export default function CheckDetail({
                     )}
                 </div>
                 {check.status === "OPEN" &&
-                    check.remainingInCents > 0 && (
+                    check.remainingInCents > 0 &&
+                    !hasPendingPaymentAttempt && (
                         <div className="flex justify-end">
                             <button
                                 type="button"
@@ -384,6 +460,21 @@ export default function CheckDetail({
                             </button>
                         </div>
                     )}
+                {hasPendingPaymentAttempt && (
+                    <div className="flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                clearError();
+                                setShowPaymentModal(true);
+                            }}
+                            disabled={saving}
+                            className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            Verificar pago pendiente
+                        </button>
+                    </div>
+                )}
 
                 <PaymentsHistory
                     payments={check.payments}
@@ -437,6 +528,7 @@ export default function CheckDetail({
                         setShowPaymentModal(false);
                     }}
                     onPay={addPayment}
+                    onVerifyPayment={handleVerifyPayment}
                 />
             )}
             {showCancelCheckModal &&

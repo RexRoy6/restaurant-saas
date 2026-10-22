@@ -42,6 +42,7 @@ export type Order = {
 
 export type Payment = {
   id: number;
+  idempotencyKey: string | null;
   amountInCents: number;
   paymentMethod: PaymentMethod;
   paidAt: string;

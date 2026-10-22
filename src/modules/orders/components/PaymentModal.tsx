@@ -21,6 +21,9 @@ type PaymentModalProps = {
   onPay: (
     input: CreatePaymentInput,
   ) => Promise<boolean>;
+  onVerifyPayment?: (
+    input: CreatePaymentInput,
+  ) => Promise<"CONFIRMED" | "PENDING" | "MISMATCH">;
 };
 
 function formatCurrency(
@@ -82,6 +85,7 @@ export default function PaymentModal({
   error,
   onClose,
   onPay,
+  onVerifyPayment,
 }: PaymentModalProps) {
   const [amount, setAmount] =
     useState("");
@@ -102,6 +106,7 @@ export default function PaymentModal({
   const [storageReady, setStorageReady] = useState(false);
   const [paymentPendingVerification, setPaymentPendingVerification] =
     useState(false);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
 
   useEffect(() => {
     setStorageReady(false);
@@ -126,7 +131,7 @@ export default function PaymentModal({
         }
 
         paymentAttemptRef.current = attempt;
-
+        setPaymentPendingVerification(true);
         setAmount(
           (attempt.amountInCents / 100).toFixed(2),
         );
@@ -168,6 +173,64 @@ export default function PaymentModal({
     setAmount(
       (remainingInCents / 100).toFixed(2),
     );
+  };
+  const handleVerifyPayment = async () => {
+    if (
+      saving ||
+      verifyingPayment ||
+      !storageReady ||
+      !paymentPendingVerification
+    ) {
+      return;
+    }
+
+    const attempt = paymentAttemptRef.current;
+
+    if (!attempt || !onVerifyPayment) {
+      setFormError(
+        "No se puede verificar este intento de pago. " +
+        "No realices otro cobro hasta revisarlo.",
+      );
+      return;
+    }
+
+    setVerifyingPayment(true);
+
+    try {
+      const result = await onVerifyPayment(attempt);
+
+      if (result === "CONFIRMED") {
+        setFormError(
+          "Pago confirmado: el servidor encontró " +
+          "el registro con el mismo identificador, " +
+          "monto y método. No vuelvas a cobrarlo.",
+        );
+        return;
+      }
+
+      if (result === "MISMATCH") {
+        setFormError(
+          "ALERTA: existe un pago con este identificador, " +
+          "pero el monto o método no coincide. " +
+          "No realices otro cobro. Solicita una revisión.",
+        );
+        return;
+      }
+
+      setFormError(
+        "El pago todavía no se puede confirmar. " +
+        "El intento permanece bloqueado. " +
+        "No realices otro cobro hasta verificarlo.",
+      );
+    } catch {
+      setFormError(
+        "No se pudo consultar el estado del pago. " +
+        "El intento permanece bloqueado. " +
+        "Verifica tu conexión y vuelve a consultar.",
+      );
+    } finally {
+      setVerifyingPayment(false);
+    }
   };
 
   const handleSubmit = async (
@@ -432,7 +495,31 @@ export default function PaymentModal({
               {error}
             </div>
           )}
+          {paymentPendingVerification && (
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={handleVerifyPayment}
+                disabled={
+                  saving ||
+                  verifyingPayment ||
+                  !storageReady ||
+                  !onVerifyPayment
+                }
+                className="w-full rounded-lg border border-amber-400 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {verifyingPayment
+                  ? "Verificando estado del pago..."
+                  : "Verificar estado del pago"}
+              </button>
 
+              <p className="mt-2 text-xs text-amber-800">
+                Esta consulta no registra otro cobro.
+                El intento original permanece protegido
+                hasta confirmar su resultado.
+              </p>
+            </div>
+          )}
           <div className="mt-6 flex justify-end gap-3">
             <button
               type="button"
