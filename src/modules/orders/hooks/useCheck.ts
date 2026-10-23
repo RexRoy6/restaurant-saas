@@ -44,6 +44,10 @@ export function useCheck(
     };
     const [syncError, setSyncError] =
         useState<string | null>(null);
+    type LoadCheckResult =
+        | "UPDATED"
+        | "SKIPPED"
+        | "FAILED";
     const activeRequestRef =
         useRef<Promise<void> | null>(null);
     const dataVersionRef = useRef(0);
@@ -220,6 +224,37 @@ export function useCheck(
             );
         };
     }, [checkId, loadCheck]);
+
+    const getDataVersion = (): number => {
+        return dataVersionRef.current;
+    };
+
+    const syncVerifiedCheck = (
+        verifiedCheck: Check,
+        expectedDataVersion: number,
+    ): boolean => {
+        if (expectedDataVersion !== dataVersionRef.current) {
+            return false;
+        }
+
+        if (writingRef.current || refreshingAfterWriteRef.current) {
+            return false;
+        }
+
+        if (checkId === null || verifiedCheck.id !== checkId) {
+            return false;
+        }
+
+        dataVersionRef.current += 1;
+        requestIdRef.current += 1;
+
+        abortControllerRef.current?.abort();
+
+        setCheck(verifiedCheck);
+        setSyncError(null);
+
+        return true;
+    };
 
 
     const beginWrite = (): boolean => {
@@ -436,6 +471,8 @@ export function useCheck(
         syncError,
 
         loadCheck,
+        getDataVersion,
+        syncVerifiedCheck,
         addOrder,
         changeOrderStatus,
         cancelExistingOrder,
