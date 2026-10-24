@@ -49,7 +49,7 @@ export function useCheck(
         | "SKIPPED"
         | "FAILED";
     const activeRequestRef =
-        useRef<Promise<void> | null>(null);
+        useRef<Promise<LoadCheckResult> | null>(null);
     const dataVersionRef = useRef(0);
     const abortControllerRef =
         useRef<AbortController | null>(null);
@@ -139,7 +139,7 @@ export function useCheck(
                     if (
                         requestVersion !== dataVersionRef.current
                     ) {
-                       return "SKIPPED";
+                        return "SKIPPED";
                     }
 
                     const message =
@@ -163,10 +163,11 @@ export function useCheck(
                 }
             })();
 
+
             activeRequestRef.current = request;
 
             try {
-                await request;
+                return await request;
             } finally {
                 if (activeRequestRef.current === request) {
                     activeRequestRef.current = null;
@@ -176,6 +177,7 @@ export function useCheck(
                     abortControllerRef.current = null;
                 }
             }
+
         },
         [checkId],
     );
