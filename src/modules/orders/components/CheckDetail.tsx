@@ -54,6 +54,8 @@ export default function CheckDetail({
         saving,
         error,
         syncError,
+        getDataVersion,
+        syncVerifiedCheck,
         addOrder,
         changeOrderStatus,
         cancelExistingOrder,
@@ -163,6 +165,7 @@ export default function CheckDetail({
         }
 
         try {
+            const expectedDataVersion = getDataVersion();
             const latestCheck = await getCheck(checkId);
 
             const matchingPayment = latestCheck.payments.find(
@@ -179,6 +182,15 @@ export default function CheckDetail({
                 matchingPayment.paymentMethod !== attempt.paymentMethod
             ) {
                 return "MISMATCH";
+            }
+
+            const synchronized = syncVerifiedCheck(
+                latestCheck,
+                expectedDataVersion,
+            );
+
+            if (!synchronized) {
+                return "PENDING";
             }
 
             return "CONFIRMED";
