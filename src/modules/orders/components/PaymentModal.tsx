@@ -359,6 +359,7 @@ export default function PaymentModal({
 
       paymentAttemptRef.current = null;
       setPaymentPendingVerification(false);
+      onPaymentAttemptCleared();
       onClose();
     } else {
       setFormError(
