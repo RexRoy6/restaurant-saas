@@ -103,7 +103,7 @@ export default function CheckDetail({
                     error,
                 );
 
-                setHasPendingPaymentAttempt(false);
+                setHasPendingPaymentAttempt(true);
             }
         }, 0);
 
