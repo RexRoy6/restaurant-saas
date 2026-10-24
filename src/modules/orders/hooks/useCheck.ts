@@ -444,7 +444,23 @@ export function useCheck(
             refreshingAfterWriteRef.current = true;
 
             try {
-                await loadCheck();
+                const refreshResult = await loadCheck();
+
+                if (refreshResult !== "UPDATED") {
+                    if (refreshResult === "SKIPPED") {
+                        setSyncError(
+                            "El pago fue registrado, pero no se pudo " +
+                            "confirmar la actualización de la cuenta. " +
+                            "Verifica la información antes de continuar.",
+                        );
+                    }
+
+                    console.warn(
+                        "El pago fue confirmado por la API, " +
+                        "pero la cuenta no pudo sincronizarse. " +
+                        `Resultado: ${refreshResult}`,
+                    );
+                }
             } catch (refreshError) {
                 console.error(
                     "Pago confirmado, pero falló la actualización de la cuenta:",
