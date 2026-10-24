@@ -60,20 +60,20 @@ export function useCheck(
 
 
     const loadCheck = useCallback(
-        async (silent = false) => {
+        async (silent = false): Promise<LoadCheckResult> => {
             if (checkId === null) {
                 setCheck(null);
                 setLoading(false);
-                return;
+                return "SKIPPED";
             }
             const lifecycleVersion = lifecycleVersionRef.current;
 
             if (silent && writingRef.current) {
-                return;
+                return "SKIPPED";
             }
 
             if (silent && activeRequestRef.current) {
-                return;
+                return "SKIPPED";
             }
 
             while (activeRequestRef.current) {
@@ -82,13 +82,13 @@ export function useCheck(
                 if (
                     lifecycleVersion !== lifecycleVersionRef.current
                 ) {
-                    return;
+                    return "SKIPPED";
                 }
             }
             if (
                 lifecycleVersion !== lifecycleVersionRef.current
             ) {
-                return;
+                return "SKIPPED";
             }
             const requestVersion = dataVersionRef.current;
             const requestId = ++requestIdRef.current;
@@ -96,7 +96,7 @@ export function useCheck(
 
             abortControllerRef.current = controller;
 
-            const request = (async () => {
+            const request: Promise<LoadCheckResult> = (async () => {
                 try {
                     if (!silent) {
                         setLoading(true);
@@ -116,28 +116,30 @@ export function useCheck(
                             !refreshingAfterWriteRef.current
                         )
                     ) {
-                        return;
+                        return "SKIPPED";
                     }
 
                     setCheck(data);
                     setSyncError(null);
+
+                    return "UPDATED";
                 } catch (error) {
                     if (
                         requestId !== requestIdRef.current ||
                         requestVersion !== dataVersionRef.current
                     ) {
-                        return;
+                        return "SKIPPED";
                     }
                     // Una cancelación intencional no es un
                     // error que debamos mostrar al usuario.
                     if (controller.signal.aborted) {
-                        return;
+                        return "SKIPPED";
                     }
 
                     if (
                         requestVersion !== dataVersionRef.current
                     ) {
-                        return;
+                       return "SKIPPED";
                     }
 
                     const message =
@@ -150,6 +152,7 @@ export function useCheck(
                     } else {
                         setError(message);
                     }
+                    return "FAILED";
                 } finally {
                     if (
                         !silent &&
