@@ -530,6 +530,9 @@ export default function CheckDetail({
             {showPaymentModal && (
                 <PaymentModal
                     paymentStorageKey={`payment-attempt:${check.companyId}:${check.id}`}
+                    onPaymentAttemptCleared={() => {
+                        setHasPendingPaymentAttempt(false);
+                    }}
                     remainingInCents={
                         check.remainingInCents
                     }

@@ -14,6 +14,7 @@ import type {
 
 type PaymentModalProps = {
   paymentStorageKey: string;
+  onPaymentAttemptCleared: () => void;
   remainingInCents: number;
   saving: boolean;
   error: string | null;
@@ -80,6 +81,7 @@ function readStoredPaymentAttempt(
 
 export default function PaymentModal({
   paymentStorageKey,
+  onPaymentAttemptCleared,
   remainingInCents,
   saving,
   error,
@@ -200,11 +202,23 @@ export default function PaymentModal({
       const result = await onVerifyPayment(attempt);
 
       if (result === "CONFIRMED") {
-        setFormError(
-          "Pago confirmado: el servidor encontró " +
-          "el registro con el mismo identificador, " +
-          "monto y método. No vuelvas a cobrarlo.",
-        );
+        try {
+          sessionStorage.removeItem(paymentStorageKey);
+        } catch {
+          setFormError(
+            "El pago fue confirmado, pero no se pudo " +
+            "limpiar su registro local. " +
+            "No intentes cobrar nuevamente.",
+          );
+          return;
+        }
+
+        paymentAttemptRef.current = null;
+        setPaymentPendingVerification(false);
+        setFormError("");
+
+        onPaymentAttemptCleared();
+        onClose();
         return;
       }
 
