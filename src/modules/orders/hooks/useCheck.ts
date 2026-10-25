@@ -44,8 +44,12 @@ export function useCheck(
     };
     const [syncError, setSyncError] =
         useState<string | null>(null);
+    type LoadCheckResult =
+        | "UPDATED"
+        | "SKIPPED"
+        | "FAILED";
     const activeRequestRef =
-        useRef<Promise<void> | null>(null);
+        useRef<Promise<LoadCheckResult> | null>(null);
     const dataVersionRef = useRef(0);
     const abortControllerRef =
         useRef<AbortController | null>(null);
@@ -56,20 +60,20 @@ export function useCheck(
 
 
     const loadCheck = useCallback(
-        async (silent = false) => {
+        async (silent = false): Promise<LoadCheckResult> => {
             if (checkId === null) {
                 setCheck(null);
                 setLoading(false);
-                return;
+                return "SKIPPED";
             }
             const lifecycleVersion = lifecycleVersionRef.current;
 
             if (silent && writingRef.current) {
-                return;
+                return "SKIPPED";
             }
 
             if (silent && activeRequestRef.current) {
-                return;
+                return "SKIPPED";
             }
 
             while (activeRequestRef.current) {
@@ -78,13 +82,13 @@ export function useCheck(
                 if (
                     lifecycleVersion !== lifecycleVersionRef.current
                 ) {
-                    return;
+                    return "SKIPPED";
                 }
             }
             if (
                 lifecycleVersion !== lifecycleVersionRef.current
             ) {
-                return;
+                return "SKIPPED";
             }
             const requestVersion = dataVersionRef.current;
             const requestId = ++requestIdRef.current;
@@ -92,7 +96,7 @@ export function useCheck(
 
             abortControllerRef.current = controller;
 
-            const request = (async () => {
+            const request: Promise<LoadCheckResult> = (async () => {
                 try {
                     if (!silent) {
                         setLoading(true);
@@ -112,28 +116,30 @@ export function useCheck(
                             !refreshingAfterWriteRef.current
                         )
                     ) {
-                        return;
+                        return "SKIPPED";
                     }
 
                     setCheck(data);
                     setSyncError(null);
+
+                    return "UPDATED";
                 } catch (error) {
                     if (
                         requestId !== requestIdRef.current ||
                         requestVersion !== dataVersionRef.current
                     ) {
-                        return;
+                        return "SKIPPED";
                     }
                     // Una cancelación intencional no es un
                     // error que debamos mostrar al usuario.
                     if (controller.signal.aborted) {
-                        return;
+                        return "SKIPPED";
                     }
 
                     if (
                         requestVersion !== dataVersionRef.current
                     ) {
-                        return;
+                        return "SKIPPED";
                     }
 
                     const message =
@@ -146,6 +152,7 @@ export function useCheck(
                     } else {
                         setError(message);
                     }
+                    return "FAILED";
                 } finally {
                     if (
                         !silent &&
@@ -156,10 +163,11 @@ export function useCheck(
                 }
             })();
 
+
             activeRequestRef.current = request;
 
             try {
-                await request;
+                return await request;
             } finally {
                 if (activeRequestRef.current === request) {
                     activeRequestRef.current = null;
@@ -169,6 +177,7 @@ export function useCheck(
                     abortControllerRef.current = null;
                 }
             }
+
         },
         [checkId],
     );
@@ -220,6 +229,37 @@ export function useCheck(
             );
         };
     }, [checkId, loadCheck]);
+
+    const getDataVersion = (): number => {
+        return dataVersionRef.current;
+    };
+
+    const syncVerifiedCheck = (
+        verifiedCheck: Check,
+        expectedDataVersion: number,
+    ): boolean => {
+        if (expectedDataVersion !== dataVersionRef.current) {
+            return false;
+        }
+
+        if (writingRef.current || refreshingAfterWriteRef.current) {
+            return false;
+        }
+
+        if (checkId === null || verifiedCheck.id !== checkId) {
+            return false;
+        }
+
+        dataVersionRef.current += 1;
+        requestIdRef.current += 1;
+
+        abortControllerRef.current?.abort();
+
+        setCheck(verifiedCheck);
+        setSyncError(null);
+
+        return true;
+    };
 
 
     const beginWrite = (): boolean => {
@@ -404,7 +444,23 @@ export function useCheck(
             refreshingAfterWriteRef.current = true;
 
             try {
-                await loadCheck();
+                const refreshResult = await loadCheck();
+
+                if (refreshResult !== "UPDATED") {
+                    if (refreshResult === "SKIPPED") {
+                        setSyncError(
+                            "El pago fue registrado, pero no se pudo " +
+                            "confirmar la actualización de la cuenta. " +
+                            "Verifica la información antes de continuar.",
+                        );
+                    }
+
+                    console.warn(
+                        "El pago fue confirmado por la API, " +
+                        "pero la cuenta no pudo sincronizarse. " +
+                        `Resultado: ${refreshResult}`,
+                    );
+                }
             } catch (refreshError) {
                 console.error(
                     "Pago confirmado, pero falló la actualización de la cuenta:",
@@ -436,6 +492,8 @@ export function useCheck(
         syncError,
 
         loadCheck,
+        getDataVersion,
+        syncVerifiedCheck,
         addOrder,
         changeOrderStatus,
         cancelExistingOrder,

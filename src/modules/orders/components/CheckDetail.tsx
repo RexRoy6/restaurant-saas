@@ -54,6 +54,8 @@ export default function CheckDetail({
         saving,
         error,
         syncError,
+        getDataVersion,
+        syncVerifiedCheck,
         addOrder,
         changeOrderStatus,
         cancelExistingOrder,
@@ -78,6 +80,10 @@ export default function CheckDetail({
         hasPendingPaymentAttempt,
         setHasPendingPaymentAttempt,
     ] = useState(false);
+    const [
+        paymentStorageError,
+        setPaymentStorageError,
+    ] = useState(false);
     useEffect(() => {
         const storageKey =
             check
@@ -87,21 +93,22 @@ export default function CheckDetail({
         const timeoutId = window.setTimeout(() => {
             if (!storageKey) {
                 setHasPendingPaymentAttempt(false);
+                setPaymentStorageError(false);
                 return;
             }
 
             try {
                 const storedAttempt =
                     window.sessionStorage.getItem(storageKey);
-
                 setHasPendingPaymentAttempt(storedAttempt !== null);
+                setPaymentStorageError(false);
             } catch (error) {
                 console.error(
                     "No se pudo consultar el intento de pago guardado:",
                     error,
                 );
-
-                setHasPendingPaymentAttempt(false);
+                setHasPendingPaymentAttempt(true);
+                setPaymentStorageError(true);
             }
         }, 0);
 
@@ -163,6 +170,7 @@ export default function CheckDetail({
         }
 
         try {
+            const expectedDataVersion = getDataVersion();
             const latestCheck = await getCheck(checkId);
 
             const matchingPayment = latestCheck.payments.find(
@@ -179,6 +187,15 @@ export default function CheckDetail({
                 matchingPayment.paymentMethod !== attempt.paymentMethod
             ) {
                 return "MISMATCH";
+            }
+
+            const synchronized = syncVerifiedCheck(
+                latestCheck,
+                expectedDataVersion,
+            );
+
+            if (!synchronized) {
+                return "PENDING";
             }
 
             return "CONFIRMED";
@@ -460,7 +477,23 @@ export default function CheckDetail({
                             </button>
                         </div>
                     )}
-                {hasPendingPaymentAttempt && (
+                {paymentStorageError && (
+                    <div
+                        role="alert"
+                        className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900"
+                    >
+                        <p className="font-semibold">
+                            No se puede consultar el almacenamiento de pagos
+                        </p>
+                        <p className="mt-1">
+                            Por seguridad, los nuevos cobros están bloqueados.
+                            Revisa el almacenamiento del navegador y vuelve
+                            a cargar la cuenta. No intentes cobrar nuevamente
+                            hasta confirmar el estado del pago.
+                        </p>
+                    </div>
+                )}
+                {hasPendingPaymentAttempt && !paymentStorageError && (
                     <div className="flex justify-end">
                         <button
                             type="button"
@@ -518,6 +551,9 @@ export default function CheckDetail({
             {showPaymentModal && (
                 <PaymentModal
                     paymentStorageKey={`payment-attempt:${check.companyId}:${check.id}`}
+                    onPaymentAttemptCleared={() => {
+                        setHasPendingPaymentAttempt(false);
+                    }}
                     remainingInCents={
                         check.remainingInCents
                     }
