@@ -209,13 +209,23 @@ export default function CheckDetail({
         }
     };
 
+
     const handleCreateOrder = async (
         input: Parameters<
             typeof addOrder
         >[0],
     ) => {
+        if (
+            hasPendingPaymentAttempt ||
+            paymentStorageError ||
+            Boolean(syncError)
+        ) {
+            return false;
+        }
+
         return addOrder(input);
     };
+
     // console.log(check);
     return (
         <>
