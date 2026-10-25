@@ -80,6 +80,10 @@ export default function CheckDetail({
         hasPendingPaymentAttempt,
         setHasPendingPaymentAttempt,
     ] = useState(false);
+    const [
+        paymentStorageError,
+        setPaymentStorageError,
+    ] = useState(false);
     useEffect(() => {
         const storageKey =
             check
@@ -89,21 +93,22 @@ export default function CheckDetail({
         const timeoutId = window.setTimeout(() => {
             if (!storageKey) {
                 setHasPendingPaymentAttempt(false);
+                setPaymentStorageError(false);
                 return;
             }
 
             try {
                 const storedAttempt =
                     window.sessionStorage.getItem(storageKey);
-
                 setHasPendingPaymentAttempt(storedAttempt !== null);
+                setPaymentStorageError(false);
             } catch (error) {
                 console.error(
                     "No se pudo consultar el intento de pago guardado:",
                     error,
                 );
-
                 setHasPendingPaymentAttempt(true);
+                setPaymentStorageError(true);
             }
         }, 0);
 
