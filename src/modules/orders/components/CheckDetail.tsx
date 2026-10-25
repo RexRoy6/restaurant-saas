@@ -477,7 +477,23 @@ export default function CheckDetail({
                             </button>
                         </div>
                     )}
-                {hasPendingPaymentAttempt && (
+                {paymentStorageError && (
+                    <div
+                        role="alert"
+                        className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900"
+                    >
+                        <p className="font-semibold">
+                            No se puede consultar el almacenamiento de pagos
+                        </p>
+                        <p className="mt-1">
+                            Por seguridad, los nuevos cobros están bloqueados.
+                            Revisa el almacenamiento del navegador y vuelve
+                            a cargar la cuenta. No intentes cobrar nuevamente
+                            hasta confirmar el estado del pago.
+                        </p>
+                    </div>
+                )}
+                {hasPendingPaymentAttempt && !paymentStorageError && (
                     <div className="flex justify-end">
                         <button
                             type="button"
