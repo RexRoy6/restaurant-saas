@@ -111,4 +111,14 @@ export const RBAC_CONFIG: RbacRoute[] = [
       DELETE: ["owner"],
     }
   },
+  //modifier-options
+  {
+    pattern: "/api/modifier-options.*",
+    methods: {
+      GET: ["owner","employee"],
+      POST: ["owner"],
+      PATCH: ["owner"],
+      DELETE: ["owner"],
+    }
+  },
 ]
