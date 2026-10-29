@@ -102,4 +102,13 @@ export const RBAC_CONFIG: RbacRoute[] = [
   //     POST: ["owner"],
   //   }
   // },
+  {
+    pattern: "/api/modifier-groups.*",
+    methods: {
+      GET: ["owner","employee"],
+      POST: ["owner"],
+      PATCH: ["owner"],
+      DELETE: ["owner"],
+    }
+  },
 ]
