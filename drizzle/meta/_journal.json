@@ -43,6 +43,13 @@
       "when": 1792186916676,
       "tag": "0005_plain_colossus",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1793309367976,
+      "tag": "0006_boring_franklin_storm",
+      "breakpoints": true
     }
   ]
 }

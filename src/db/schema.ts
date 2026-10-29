@@ -330,6 +330,71 @@ export const products = mysqlTable(
 
   }),
 );
+/* ---------- MODIFIER GROUPS ---------- */
+
+export const modifierGroups = mysqlTable(
+  "modifier_groups",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().autoincrement(),
+    companyId: bigint("company_id", { mode: "number" }).notNull().references(() => companies.id),
+    name: varchar("name", { length: 120 }).notNull(),
+    minSelections: bigint("min_selections", { mode: "number" }).notNull().default(0),
+    maxSelections: bigint("max_selections", { mode: "number" }).notNull().default(1),
+    sortOrder: bigint("sort_order", { mode: "number" }).notNull().default(0),
+    ...baseColumns,
+  },
+  (table) => ({
+    companyNameUnique: uniqueIndex("modifier_groups_company_name_unique").on(table.companyId, table.name),
+    companySortIdx: index("modifier_groups_company_sort_idx").on(table.companyId, table.sortOrder),
+    selectionRangeCheck: check(
+      "modifier_groups_selection_range_check",
+      sql`${table.minSelections} >= 0 AND ${table.maxSelections} >= 1 AND ${table.minSelections} <= ${table.maxSelections}`,
+    ),
+  }),
+);
+
+/* ---------- MODIFIER OPTIONS ---------- */
+
+export const modifierOptions = mysqlTable(
+  "modifier_options",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().autoincrement(),
+    companyId: bigint("company_id", { mode: "number" }).notNull().references(() => companies.id),
+    groupId: bigint("group_id", { mode: "number" }).notNull().references(() => modifierGroups.id),
+    name: varchar("name", { length: 120 }).notNull(),
+    priceInCents: bigint("price_in_cents", { mode: "number" }).notNull().default(0),
+    isAvailable: boolean("is_available").notNull().default(true),
+    sortOrder: bigint("sort_order", { mode: "number" }).notNull().default(0),
+    ...baseColumns,
+  },
+  (table) => ({
+    groupNameUnique: uniqueIndex("modifier_options_group_name_unique").on(table.groupId, table.name),
+    companyGroupIdx: index("modifier_options_company_group_idx").on(table.companyId, table.groupId),
+    priceNonNegative: check("modifier_options_price_non_negative", sql`${table.priceInCents} >= 0`),
+  }),
+);
+
+/* ---------- PRODUCT / MODIFIER GROUP ASSOCIATIONS ---------- */
+
+export const productModifierGroups = mysqlTable(
+  "product_modifier_groups",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().autoincrement(),
+    companyId: bigint("company_id", { mode: "number" }).notNull().references(() => companies.id),
+    productId: bigint("product_id", { mode: "number" }).notNull().references(() => products.id),
+    groupId: bigint("group_id", { mode: "number" }).notNull().references(() => modifierGroups.id),
+    sortOrder: bigint("sort_order", { mode: "number" }).notNull().default(0),
+    ...baseColumns,
+  },
+  (table) => ({
+    productGroupUnique: uniqueIndex("product_modifier_groups_product_group_unique").on(table.productId, table.groupId),
+    companyProductIdx: index("product_modifier_groups_company_product_idx").on(table.companyId, table.productId),
+    companyGroupIdx: index("product_modifier_groups_company_group_idx").on(table.companyId, table.groupId),
+  }),
+);
+
+/* ---------- CHECKS / ORDERS BELOW ---------- */
+
 //tabla de checks cuentas xd
 export const checks = mysqlTable(
   "checks",
@@ -467,6 +532,13 @@ export const orderItems = mysqlTable(
       length: 120,
     }).notNull(),
 
+    // Historical base product price, excluding selected modifiers.
+    baseUnitPriceInCents: bigint(
+      "base_unit_price_in_cents",
+      { mode: "number" },
+    ).notNull(),
+
+    // Historical final unit price, including selected modifiers.
     unitPriceInCents: bigint(
       "unit_price_in_cents",
       { mode: "number" },
@@ -493,6 +565,11 @@ export const orderItems = mysqlTable(
     productIdx: index("order_items_product_idx")
       .on(table.productId),
 
+    baseUnitPriceNonNegative: check(
+      "order_items_base_unit_price_non_negative",
+      sql`${table.baseUnitPriceInCents} >= 0`,
+    ),
+
     unitPriceNonNegative: check(
       "order_items_unit_price_non_negative",
       sql`${table.unitPriceInCents} >= 0`,
@@ -507,6 +584,30 @@ export const orderItems = mysqlTable(
       "order_items_subtotal_non_negative",
       sql`${table.subtotalInCents} >= 0`,
     ),
+  }),
+);
+
+/* ---------- ORDER ITEM MODIFIER SNAPSHOTS ---------- */
+
+export const orderItemModifiers = mysqlTable(
+  "order_item_modifiers",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().autoincrement(),
+    companyId: bigint("company_id", { mode: "number" }).notNull().references(() => companies.id),
+    orderItemId: bigint("order_item_id", { mode: "number" }).notNull().references(() => orderItems.id),
+    modifierGroupId: bigint("modifier_group_id", { mode: "number" }).notNull().references(() => modifierGroups.id),
+    modifierOptionId: bigint("modifier_option_id", { mode: "number" }).notNull().references(() => modifierOptions.id),
+    groupName: varchar("group_name", { length: 120 }).notNull(),
+    optionName: varchar("option_name", { length: 120 }).notNull(),
+    priceInCents: bigint("price_in_cents", { mode: "number" }).notNull(),
+    ...baseColumns,
+  },
+  (table) => ({
+    itemOptionUnique: uniqueIndex("order_item_modifiers_item_option_unique").on(table.orderItemId, table.modifierOptionId),
+    companyItemIdx: index("order_item_modifiers_company_item_idx").on(table.companyId, table.orderItemId),
+    groupIdx: index("order_item_modifiers_group_idx").on(table.modifierGroupId),
+    optionIdx: index("order_item_modifiers_option_idx").on(table.modifierOptionId),
+    priceNonNegative: check("order_item_modifiers_price_non_negative", sql`${table.priceInCents} >= 0`),
   }),
 );
 

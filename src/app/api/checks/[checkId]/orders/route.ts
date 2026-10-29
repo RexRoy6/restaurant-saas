@@ -378,6 +378,9 @@ export async function POST(
               categoryName:
                 category.name,
 
+              baseUnitPriceInCents:
+                product.priceInCents,
+
               unitPriceInCents:
                 product.priceInCents,
 
@@ -472,6 +475,9 @@ export async function POST(
               categoryName:
                 snapshot.categoryName,
 
+              baseUnitPriceInCents:
+                snapshot.baseUnitPriceInCents,
+
               unitPriceInCents:
                 snapshot.unitPriceInCents,
 
@@ -559,9 +565,9 @@ export async function POST(
 
     if (
       message ===
-        "PRODUCT_NOT_AVAILABLE" ||
+      "PRODUCT_NOT_AVAILABLE" ||
       message ===
-        "CATEGORY_NOT_AVAILABLE"
+      "CATEGORY_NOT_AVAILABLE"
     ) {
       return NextResponse.json(
         {
