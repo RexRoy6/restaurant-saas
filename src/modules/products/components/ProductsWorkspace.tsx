@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Package, SlidersHorizontal } from "lucide-react";
 
 import ProductsManager from "./ProductsManager";
+import ModifierGroupsManager from "./ModifierGroupsManager";
 
 type ActiveTab = "products" | "modifiers";
 
@@ -18,11 +19,10 @@ export default function ProductsWorkspace() {
         <button
           type="button"
           onClick={() => setActiveTab("products")}
-          className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition ${
-            activeTab === "products"
+          className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition ${activeTab === "products"
               ? "border-gray-900 text-gray-900"
               : "border-transparent text-gray-500 hover:text-gray-900"
-          }`}
+            }`}
         >
           <Package size={17} />
           Productos
@@ -31,11 +31,10 @@ export default function ProductsWorkspace() {
         <button
           type="button"
           onClick={() => setActiveTab("modifiers")}
-          className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition ${
-            activeTab === "modifiers"
+          className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition ${activeTab === "modifiers"
               ? "border-gray-900 text-gray-900"
               : "border-transparent text-gray-500 hover:text-gray-900"
-          }`}
+            }`}
         >
           <SlidersHorizontal size={17} />
           Modificadores
@@ -46,16 +45,7 @@ export default function ProductsWorkspace() {
         {activeTab === "products" ? (
           <ProductsManager />
         ) : (
-          <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Grupos de modificadores
-            </h2>
-
-            <p className="mt-2 text-sm text-gray-500">
-              Aquí administraremos los grupos y sus opciones
-              reutilizables entre productos.
-            </p>
-          </div>
+          <ModifierGroupsManager />
         )}
       </div>
     </div>
