@@ -20,6 +20,7 @@ import type {
     ModifierOption,
     ModifierOptionInput,
 } from "../types/modifier";
+import InactiveModifiersManager from "./InactiveModifiersManager";
 
 function formatCurrency(priceInCents: number) {
     return new Intl.NumberFormat("es-MX", {
@@ -29,6 +30,7 @@ function formatCurrency(priceInCents: number) {
 }
 
 export default function ModifierGroupsManager() {
+    const [showRecovery, setShowRecovery] = useState(false);
     const {
         groups,
         loading,
@@ -226,7 +228,31 @@ export default function ModifierGroupsManager() {
                         <Plus size={17} />
                         Nuevo grupo
                     </button>
+
+                    <button
+                        type="button"
+                        onClick={() => setShowRecovery((current) => !current)}
+                        disabled={saving}
+                        className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+                    >
+                        {showRecovery
+                            ? "Ocultar recuperación"
+                            : "Recuperar modificadores"}
+                    </button>
+
                 </div>
+
+                {showRecovery && (
+                    <div className="mt-6">
+                        <InactiveModifiersManager
+                            activeGroups={groups.map((group) => ({
+                                id: group.id,
+                                name: group.name,
+                            }))}
+                            onRestored={loadGroups}
+                        />
+                    </div>
+                )}
             </div>
 
             {(error || actionError) && (

@@ -183,9 +183,9 @@ export async function getInactiveModifierGroups():
 export async function getInactiveModifierOptions(
   groupId: number,
 ): Promise<ModifierOption[]> {
-  // Esta ruta aún no existe en nuestro backend.
-  // No la llamaremos hasta implementarla.
-  throw new Error(
-    `La consulta de opciones inactivas del grupo ${groupId} todavía requiere un endpoint.`,
+  const response = await request(
+    `/api/modifier-groups/${groupId}/options/inactive`,
   );
+
+  return response.json();
 }
