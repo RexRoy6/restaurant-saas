@@ -248,7 +248,7 @@ export default function OrderCard({
                     (item, index) => (
                         <div
                             key={item.id}
-                            className={`flex items-center justify-between gap-4 px-4 py-3 ${index !==
+                            className={`flex items-start justify-between gap-4 px-4 py-3 ${index !==
                                 order.items.length - 1
                                 ? "border-b border-gray-100"
                                 : ""
@@ -259,30 +259,99 @@ export default function OrderCard({
                                     {item.quantity}×
                                 </div>
 
-                                <div className="min-w-0">
+
+                                <div className="min-w-0 flex-1">
                                     <p
                                         className={
                                             cancelled
-                                                ? "truncate text-sm font-medium text-gray-500"
-                                                : "truncate text-sm font-medium text-gray-800"
+                                                ? "break-words text-sm font-medium text-gray-500"
+                                                : "break-words text-sm font-medium text-gray-800"
                                         }
                                     >
                                         {item.productName}
                                     </p>
 
+                                    {/* Categoría y precio final por unidad */}
                                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400">
-                                        <span>
-                                            {item.categoryName}
-                                        </span>
+                                        <span>{item.categoryName}</span>
 
                                         <span>
-                                            {formatCurrency(
-                                                item.unitPriceInCents,
-                                            )}{" "}
-                                            c/u
+                                            {formatCurrency(item.unitPriceInCents)} c/u
                                         </span>
                                     </div>
+
+                                    {/* Modificadores históricos seleccionados */}
+                                    {item.modifiers.length > 0 && (
+                                        <div
+                                            className={
+                                                cancelled
+                                                    ? "mt-3 space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3"
+                                                    : "mt-3 space-y-2 rounded-lg border border-gray-100 bg-gray-50/80 p-3"
+                                            }
+                                        >
+                                            {item.modifiers.map((modifier) => (
+                                                <div
+                                                    key={modifier.id}
+                                                    className="flex items-start justify-between gap-3"
+                                                >
+                                                    <div className="flex min-w-0 items-start gap-2">
+                                                        <CheckCircle2
+                                                            size={14}
+                                                            className={
+                                                                cancelled
+                                                                    ? "mt-0.5 shrink-0 text-gray-400"
+                                                                    : "mt-0.5 shrink-0 text-emerald-600"
+                                                            }
+                                                        />
+
+                                                        <p
+                                                            className={
+                                                                cancelled
+                                                                    ? "break-words text-xs text-gray-400"
+                                                                    : "break-words text-xs text-gray-600"
+                                                            }
+                                                        >
+                                                            <span className="font-medium">
+                                                                {modifier.groupName}:
+                                                            </span>{" "}
+                                                            {modifier.optionName}
+                                                        </p>
+                                                    </div>
+
+                                                    {modifier.priceInCents > 0 && (
+                                                        <span
+                                                            className={
+                                                                cancelled
+                                                                    ? "shrink-0 text-xs font-medium text-gray-400"
+                                                                    : "shrink-0 text-xs font-medium text-gray-600"
+                                                            }
+                                                        >
+                                                            +{formatCurrency(modifier.priceInCents)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
+
+                                            {/* Desglose de precio cuando hay recargos */}
+                                            {item.unitPriceInCents !==
+                                                item.baseUnitPriceInCents && (
+                                                    <div className="flex items-center justify-between gap-3 border-t border-gray-200 pt-2">
+                                                        <span className="text-xs text-gray-400">
+                                                            Precio base
+                                                        </span>
+
+                                                        <span className="text-xs text-gray-500">
+                                                            {formatCurrency(
+                                                                item.baseUnitPriceInCents,
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                        </div>
+                                    )}
                                 </div>
+
+
                             </div>
 
                             <span

@@ -8,7 +8,8 @@ import {
   checks,
   orders,
   orderItems,
-  payments
+  orderItemModifiers,
+  payments,
 } from "@/db/schema";
 
 import { requireAuth } from "@/lib/auth/requireAuth";
@@ -103,6 +104,58 @@ export async function GET(
           ),
         )
         : [];
+
+    /*
+     * ============================================
+     * ORDER ITEM MODIFIERS
+     * ============================================
+     *
+     * Recuperamos los snapshots históricos
+     * de las opciones seleccionadas.
+     *
+     * No consultamos modifierOptions ni
+     * modifierGroups porque sus nombres y
+     * precios actuales podrían haber cambiado.
+     */
+    const orderItemIds = itemList.map(
+      (item) => item.id,
+    );
+
+    const modifierList =
+      orderItemIds.length > 0
+        ? await tenant.findMany(
+          orderItemModifiers,
+          inArray(
+            orderItemModifiers.orderItemId,
+            orderItemIds,
+          ),
+        )
+        : [];
+
+    /*
+     * ============================================
+     * GROUP MODIFIERS BY ORDER ITEM
+     * ============================================
+     */
+    const modifiersByOrderItemId = new Map<
+      number,
+      typeof modifierList
+    >();
+
+    for (const modifier of modifierList) {
+      const currentModifiers =
+        modifiersByOrderItemId.get(
+          modifier.orderItemId,
+        ) ?? [];
+
+      currentModifiers.push(modifier);
+
+      modifiersByOrderItemId.set(
+        modifier.orderItemId,
+        currentModifiers,
+      );
+    }
+
     /*
      * ============================================
      * GROUP ITEMS BY ORDER
@@ -153,19 +206,44 @@ export async function GET(
 
             totalInCents = nextTotal;
 
+
+            const modifiers =
+              modifiersByOrderItemId.get(item.id) ?? [];
+
             return {
               id: item.id,
               productId: item.productId,
               productName: item.productName,
               sku: item.sku,
-              categoryName:
-                item.categoryName,
+              categoryName: item.categoryName,
+
+              // Precio histórico del producto,
+              // antes de aplicar modificadores.
+              baseUnitPriceInCents:
+                item.baseUnitPriceInCents,
+
+              // Precio final histórico por unidad.
               unitPriceInCents:
                 item.unitPriceInCents,
+
               quantity: item.quantity,
+
               subtotalInCents:
                 item.subtotalInCents,
+
+              // Snapshots históricos de modificadores.
+              modifiers: modifiers.map((modifier) => ({
+                id: modifier.id,
+                modifierGroupId:
+                  modifier.modifierGroupId,
+                modifierOptionId:
+                  modifier.modifierOptionId,
+                groupName: modifier.groupName,
+                optionName: modifier.optionName,
+                priceInCents: modifier.priceInCents,
+              })),
             };
+
           },
         );
 

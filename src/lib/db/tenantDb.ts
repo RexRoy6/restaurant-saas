@@ -28,6 +28,10 @@ import {
   orders,
   orderItems,
   payments,
+  modifierGroups,
+  modifierOptions,
+  productModifierGroups,
+  orderItemModifiers,
 } from "@/db/schema";
 import { requireAuth } from "@/lib/auth/requireAuth";
 
@@ -63,7 +67,11 @@ type TenantTable =
   | typeof checks
   | typeof orders
   | typeof orderItems
-  | typeof payments;
+  | typeof payments
+  | typeof modifierGroups
+  | typeof modifierOptions
+  | typeof productModifierGroups
+  | typeof orderItemModifiers;
 
 type TenantValues = Record<string, unknown>;
 type TenantRow<T extends TenantTable> = T["$inferSelect"];
@@ -112,6 +120,10 @@ function buildTenantWhere(
     orders,
     orderItems,
     payments,
+    modifierGroups,
+    modifierOptions,
+    productModifierGroups,
+    orderItemModifiers,
   ];
 
   if (tenantTables.includes(table)) {
@@ -165,6 +177,21 @@ function requireNumericId(
  *
  * sus validaciones deberán configurarse explícitamente aquí.
  */
+async function assertActiveParent(
+  executor: TenantDbExecutor,
+  table: typeof products | typeof modifierGroups,
+  id: number,
+  companyId: number,
+  label: string,
+) {
+  const parent = table === products
+    ? await executor.select({ id: products.id }).from(products)
+        .where(and(eq(products.id, id), eq(products.companyId, companyId), isNull(products.deletedAt))).limit(1)
+    : await executor.select({ id: modifierGroups.id }).from(modifierGroups)
+        .where(and(eq(modifierGroups.id, id), eq(modifierGroups.companyId, companyId), isNull(modifierGroups.deletedAt))).limit(1);
+  if (parent.length === 0) throw new Error(`${label} does not belong to current tenant or is inactive.`);
+}
+
 async function assertParentBelongsToTenant(
   executor: TenantDbExecutor,
   table: TenantTable,
@@ -352,6 +379,51 @@ async function assertParentBelongsToTenant(
     return;
   }
 
+  if (table === modifierGroups) return;
+
+  if (table === modifierOptions) {
+    await assertActiveParent(executor, modifierGroups, requireNumericId(values, "groupId"), companyId, "Modifier group");
+    return;
+  }
+
+  if (table === productModifierGroups) {
+    await assertActiveParent(executor, products, requireNumericId(values, "productId"), companyId, "Product");
+    await assertActiveParent(executor, modifierGroups, requireNumericId(values, "groupId"), companyId, "Modifier group");
+    return;
+  }
+
+  if (table === orderItemModifiers) {
+    const orderItemId = requireNumericId(values, "orderItemId");
+    const modifierGroupId = requireNumericId(values, "modifierGroupId");
+    const modifierOptionId = requireNumericId(values, "modifierOptionId");
+    const [item] = await executor.select({ productId: orderItems.productId })
+      .from(orderItems)
+      .where(and(eq(orderItems.id, orderItemId), eq(orderItems.companyId, companyId), isNull(orderItems.deletedAt)))
+      .limit(1);
+    if (!item) throw new Error("Order item does not belong to current tenant.");
+    await assertActiveParent(executor, modifierGroups, modifierGroupId, companyId, "Modifier group");
+    const [option] = await executor.select({ id: modifierOptions.id })
+      .from(modifierOptions)
+      .where(and(
+        eq(modifierOptions.id, modifierOptionId),
+        eq(modifierOptions.groupId, modifierGroupId),
+        eq(modifierOptions.companyId, companyId),
+        eq(modifierOptions.isAvailable, true),
+        isNull(modifierOptions.deletedAt),
+      )).limit(1);
+    if (!option) throw new Error("Modifier option is invalid for this group.");
+    const [assignment] = await executor.select({ id: productModifierGroups.id })
+      .from(productModifierGroups)
+      .where(and(
+        eq(productModifierGroups.productId, item.productId),
+        eq(productModifierGroups.groupId, modifierGroupId),
+        eq(productModifierGroups.companyId, companyId),
+        isNull(productModifierGroups.deletedAt),
+      )).limit(1);
+    if (!assignment) throw new Error("Modifier group is not assigned to the product.");
+    return;
+  }
+
   /**
    * FAIL CLOSED.
    */
@@ -377,6 +449,10 @@ function sanitizeTenantUpdate(
     orders,
     orderItems,
     payments,
+    modifierGroups,
+    modifierOptions,
+    productModifierGroups,
+    orderItemModifiers,
   ];
 
   if (!tenantTables.includes(table)) {
@@ -423,6 +499,20 @@ function sanitizeTenantUpdate(
     throw new Error(
       "Payment checkId cannot be changed.",
     );
+  }
+
+  if (table === modifierOptions && "groupId" in values) {
+    throw new Error("Modifier option groupId cannot be changed.");
+  }
+  if (table === productModifierGroups &&
+      ("productId" in values || "groupId" in values)) {
+    throw new Error("Product modifier group relationships cannot be changed.");
+  }
+  if (table === orderItemModifiers &&
+      ("orderItemId" in values || "modifierGroupId" in values ||
+       "modifierOptionId" in values || "groupName" in values ||
+       "optionName" in values || "priceInCents" in values)) {
+    throw new Error("Historical order item modifiers cannot be changed.");
   }
 
   return values;
@@ -851,6 +941,19 @@ export async function tenantDb(
           .values(
             insertValues as typeof payments.$inferInsert,
           );
+      }
+
+      if (table === modifierGroups) {
+        return executor.insert(modifierGroups).values(insertValues as typeof modifierGroups.$inferInsert);
+      }
+      if (table === modifierOptions) {
+        return executor.insert(modifierOptions).values(insertValues as typeof modifierOptions.$inferInsert);
+      }
+      if (table === productModifierGroups) {
+        return executor.insert(productModifierGroups).values(insertValues as typeof productModifierGroups.$inferInsert);
+      }
+      if (table === orderItemModifiers) {
+        return executor.insert(orderItemModifiers).values(insertValues as typeof orderItemModifiers.$inferInsert);
       }
 
       throw new Error(

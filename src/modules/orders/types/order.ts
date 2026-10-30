@@ -15,16 +15,56 @@ export type PaymentMethod =
   | "CARD"
   | "TRANSFER";
 
+
+/**
+ * Snapshot histórico de una opción
+ * seleccionada en un artículo del pedido.
+ */
+export type OrderItemModifier = {
+  id: number;
+
+  modifierGroupId: number;
+  modifierOptionId: number;
+
+  groupName: string;
+  optionName: string;
+
+  priceInCents: number;
+};
+
 export type OrderItem = {
   id: number;
+
   productId: number;
   productName: string;
   sku: string;
   categoryName: string;
+
+  /**
+   * Precio histórico del producto
+   * sin modificadores.
+   */
+  baseUnitPriceInCents: number;
+
+  /**
+   * Precio histórico final por unidad,
+   * incluyendo modificadores.
+   */
   unitPriceInCents: number;
+
   quantity: number;
   subtotalInCents: number;
+
+  /**
+   * Opciones seleccionadas cuando
+   * se creó este artículo.
+   *
+   * Un artículo sin modificadores
+   * tendrá un arreglo vacío.
+   */
+  modifiers: OrderItemModifier[];
 };
+
 
 export type Order = {
   id: number;
@@ -82,9 +122,22 @@ export type CreateCheckInput = {
   note?: string;
 };
 
+// export type CreateOrderItemInput = {
+//   productId: number;
+//   quantity: number;
+// };
 export type CreateOrderItemInput = {
   productId: number;
   quantity: number;
+
+  /**
+   * IDs de opciones seleccionadas.
+   *
+   * No incluye precios ni nombres.
+   * El backend obtiene esos valores
+   * desde la base de datos.
+   */
+  modifierOptionIds?: number[];
 };
 
 export type CreateOrderInput = {
