@@ -7,14 +7,18 @@ import {
     Plus,
     RefreshCw,
     SlidersHorizontal,
+    Trash2,
 } from "lucide-react";
 
 import { useModifierGroups } from "../hooks/useModifierGroups";
 import ModifierGroupForm from "./ModifierGroupForm";
+import ModifierOptionForm from "./ModifierOptionForm";
 
 import type {
     ModifierGroup,
     ModifierGroupInput,
+    ModifierOption,
+    ModifierOptionInput,
 } from "../types/modifier";
 
 function formatCurrency(priceInCents: number) {
@@ -33,30 +37,46 @@ export default function ModifierGroupsManager() {
         loadGroups,
         addGroup,
         editGroup,
+        removeGroup,
+        addOption,
+        editOption,
+        removeOption,
     } = useModifierGroups();
 
-    const [showForm, setShowForm] = useState(false);
+    const [showGroupForm, setShowGroupForm] =
+        useState(false);
+
     const [editingGroup, setEditingGroup] =
         useState<ModifierGroup | null>(null);
 
-    const openCreate = () => {
+    const [optionGroupId, setOptionGroupId] =
+        useState<number | null>(null);
+
+    const [editingOption, setEditingOption] =
+        useState<ModifierOption | null>(null);
+
+    const [actionError, setActionError] = useState("");
+
+    const openCreateGroup = () => {
         setEditingGroup(null);
-        setShowForm(true);
+        setShowGroupForm(true);
+        setActionError("");
     };
 
-    const openEdit = (group: ModifierGroup) => {
+    const openEditGroup = (group: ModifierGroup) => {
         setEditingGroup(group);
-        setShowForm(true);
+        setShowGroupForm(true);
+        setActionError("");
     };
 
-    const closeForm = () => {
+    const closeGroupForm = () => {
         if (saving) return;
 
-        setShowForm(false);
+        setShowGroupForm(false);
         setEditingGroup(null);
     };
 
-    const handleSave = async (
+    const handleSaveGroup = async (
         input: ModifierGroupInput,
     ) => {
         if (editingGroup) {
@@ -65,8 +85,111 @@ export default function ModifierGroupsManager() {
             await addGroup(input);
         }
 
-        setShowForm(false);
+        setShowGroupForm(false);
         setEditingGroup(null);
+    };
+
+    const openCreateOption = (groupId: number) => {
+        setOptionGroupId(groupId);
+        setEditingOption(null);
+        setActionError("");
+    };
+
+    const openEditOption = (
+        groupId: number,
+        option: ModifierOption,
+    ) => {
+        setOptionGroupId(groupId);
+        setEditingOption(option);
+        setActionError("");
+    };
+
+    const closeOptionForm = () => {
+        if (saving) return;
+
+        setOptionGroupId(null);
+        setEditingOption(null);
+    };
+
+    const handleSaveOption = async (
+        input: ModifierOptionInput,
+    ) => {
+        if (optionGroupId === null) return;
+
+        if (editingOption) {
+            await editOption(editingOption.id, input);
+        } else {
+            await addOption(optionGroupId, input);
+        }
+
+        setOptionGroupId(null);
+        setEditingOption(null);
+    };
+
+    const handleToggleAvailability = async (
+        option: ModifierOption,
+    ) => {
+        setActionError("");
+
+        try {
+            await editOption(option.id, {
+                isAvailable: !option.isAvailable,
+            });
+        } catch (err) {
+            setActionError(
+                err instanceof Error
+                    ? err.message
+                    : "No se pudo cambiar la disponibilidad.",
+            );
+        }
+    };
+
+    const handleRemoveOption = async (
+        option: ModifierOption,
+    ) => {
+        const confirmed = window.confirm(
+            `¿Desactivar la opción "${option.name}"?\n\n` +
+            "Dejará de aparecer en los grupos activos. " +
+            "Los pedidos históricos no se modificarán.",
+        );
+
+        if (!confirmed) return;
+
+        setActionError("");
+
+        try {
+            await removeOption(option.id);
+        } catch (err) {
+            setActionError(
+                err instanceof Error
+                    ? err.message
+                    : "No se pudo desactivar la opción.",
+            );
+        }
+    };
+
+    const handleRemoveGroup = async (
+        group: ModifierGroup,
+    ) => {
+        const confirmed = window.confirm(
+            `¿Desactivar el grupo "${group.name}"?\n\n` +
+            "Dejará de ofrecerse en los productos " +
+            "que lo tengan asignado.",
+        );
+
+        if (!confirmed) return;
+
+        setActionError("");
+
+        try {
+            await removeGroup(group.id);
+        } catch (err) {
+            setActionError(
+                err instanceof Error
+                    ? err.message
+                    : "No se pudo desactivar el grupo.",
+            );
+        }
     };
 
     return (
@@ -78,8 +201,8 @@ export default function ModifierGroupsManager() {
                     </h2>
 
                     <p className="mt-1 text-sm text-gray-500">
-                        Configura grupos reutilizables entre
-                        diferentes productos.
+                        Configura grupos y opciones reutilizables
+                        entre diferentes productos.
                     </p>
                 </div>
 
@@ -96,7 +219,7 @@ export default function ModifierGroupsManager() {
 
                     <button
                         type="button"
-                        onClick={openCreate}
+                        onClick={openCreateGroup}
                         disabled={saving}
                         className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-50"
                     >
@@ -106,12 +229,12 @@ export default function ModifierGroupsManager() {
                 </div>
             </div>
 
-            {error && (
+            {(error || actionError) && (
                 <div
                     role="alert"
                     className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
                 >
-                    {error}
+                    {actionError || error}
                 </div>
             )}
 
@@ -167,53 +290,126 @@ export default function ModifierGroupsManager() {
                                     group.options.map((option) => (
                                         <div
                                             key={option.id}
-                                            className="flex items-center justify-between gap-3 py-3"
+                                            className="flex flex-wrap items-center justify-between gap-3 py-3"
                                         >
                                             <div>
                                                 <p className="text-sm font-medium text-gray-800">
                                                     {option.name}
                                                 </p>
 
+                                                <p className="mt-0.5 text-xs text-gray-500">
+                                                    {formatCurrency(
+                                                        option.priceInCents,
+                                                    )}
+                                                </p>
+
                                                 {!option.isAvailable && (
-                                                    <p className="text-xs text-amber-600">
+                                                    <p className="mt-1 text-xs text-amber-600">
                                                         No disponible
                                                     </p>
                                                 )}
                                             </div>
 
-                                            <span className="text-sm text-gray-600">
-                                                {formatCurrency(
-                                                    option.priceInCents,
-                                                )}
-                                            </span>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        void handleToggleAvailability(option)
+                                                    }
+                                                    disabled={saving}
+                                                    className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+                                                >
+                                                    {option.isAvailable
+                                                        ? "No disponible"
+                                                        : "Activar"}
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        openEditOption(group.id, option)
+                                                    }
+                                                    disabled={saving}
+                                                    aria-label={`Editar ${option.name}`}
+                                                    className="rounded-lg border border-gray-200 p-2 text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
+                                                >
+                                                    <Pencil size={15} />
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        void handleRemoveOption(option)
+                                                    }
+                                                    disabled={saving}
+                                                    aria-label={`Desactivar ${option.name}`}
+                                                    className="rounded-lg border border-red-100 p-2 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                                                >
+                                                    <Trash2 size={15} />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))
                                 )}
                             </div>
 
-                            <div className="mt-4 flex justify-end border-t border-gray-100 pt-4">
+                            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-4">
                                 <button
                                     type="button"
-                                    onClick={() => openEdit(group)}
+                                    onClick={() => openCreateOption(group.id)}
                                     disabled={saving}
                                     className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
                                 >
-                                    <Pencil size={15} />
-                                    Editar
+                                    <Plus size={15} />
+                                    Agregar opción
                                 </button>
+
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => openEditGroup(group)}
+                                        disabled={saving}
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+                                    >
+                                        <Pencil size={15} />
+                                        Editar
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            void handleRemoveGroup(group)
+                                        }
+                                        disabled={saving}
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-100 px-3 py-2 text-sm text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                                    >
+                                        <Trash2 size={15} />
+                                        Desactivar
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}
                 </div>
             )}
 
-            {showForm && (
+            {showGroupForm && (
                 <ModifierGroupForm
                     key={editingGroup?.id ?? "new"}
                     group={editingGroup}
                     saving={saving}
-                    onClose={closeForm}
-                    onSave={handleSave}
+                    onClose={closeGroupForm}
+                    onSave={handleSaveGroup}
+                />
+            )}
+
+            {optionGroupId !== null && (
+                <ModifierOptionForm
+                    key={editingOption?.id ?? `new-${optionGroupId}`}
+                    option={editingOption}
+                    saving={saving}
+                    onClose={closeOptionForm}
+                    onSave={handleSaveOption}
                 />
             )}
         </>
