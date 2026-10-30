@@ -1,7 +1,8 @@
+
 import { Package } from "lucide-react";
 
 import PageHeader from "@/app/components/PageHeader";
-import ProductsManager from "@/modules/products/components/ProductsManager";
+import ProductsWorkspace from "@/modules/products/components/ProductsWorkspace";
 
 export default function ProductsPage() {
   return (
@@ -12,7 +13,7 @@ export default function ProductsPage() {
       />
 
       <div className="mt-6">
-        <ProductsManager />
+        <ProductsWorkspace />
       </div>
     </div>
   );

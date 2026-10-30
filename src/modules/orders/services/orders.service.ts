@@ -109,7 +109,13 @@ export async function getCheck(
       method: "GET",
       credentials: "include",
       cache: "no-store",
-      signal,
+      //Si la consulta tarda más de 15 segundos, se cancela automáticamente.
+      signal: signal
+        ? AbortSignal.any([
+          signal,
+          AbortSignal.timeout(15_000),
+        ])
+        : AbortSignal.timeout(15_000),
     },
   );
 

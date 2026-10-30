@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Pencil,
   Plus,
+  Settings2,
   X,
 } from "lucide-react";
 
@@ -14,6 +15,7 @@ import type {
   Product,
   ProductInput,
 } from "../types/product";
+import ProductModifierGroupsModal from "./ProductModifierGroupsModal";
 
 type ProductFormState = {
   categoryId: string;
@@ -65,6 +67,10 @@ export default function ProductsManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] =
     useState<Product | null>(null);
+  const [
+    selectedProductForModifiers,
+    setSelectedProductForModifiers,
+  ] = useState<Product | null>(null);
 
   const [form, setForm] =
     useState<ProductFormState>(emptyForm);
@@ -391,6 +397,19 @@ export default function ProductsManager() {
 
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-2">
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedProductForModifiers(product)
+                          }
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50"
+                          title={`Administrar modificadores de ${product.name}`}
+                        >
+                          <Settings2 size={15} />
+                          Modificadores
+                        </button>
+
                         <button
                           type="button"
                           onClick={() =>
@@ -584,6 +603,15 @@ export default function ProductsManager() {
             </form>
           </div>
         </div>
+      )}
+      {selectedProductForModifiers && (
+        <ProductModifierGroupsModal
+          key={selectedProductForModifiers.id}
+          product={selectedProductForModifiers}
+          onClose={() =>
+            setSelectedProductForModifiers(null)
+          }
+        />
       )}
     </>
   );

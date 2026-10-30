@@ -15,6 +15,7 @@ import {
 } from "@/db/schema";
 
 import { tenantDb } from "@/lib/db/tenantDb";
+import { isSamePayment } from "@/modules/orders/utils/isSamePayment.mjs";
 
 type PaymentMethod =
     (typeof PAYMENT_METHODS)[number];
@@ -165,9 +166,11 @@ export async function POST(
 
                 if (existingPayment) {
                     if (
-                        existingPayment.checkId !== check.id ||
-                        existingPayment.amountInCents !== body.amountInCents ||
-                        existingPayment.paymentMethod !== body.paymentMethod
+                        !isSamePayment(existingPayment, {
+                            checkId: check.id,
+                            amountInCents: body.amountInCents,
+                            paymentMethod: body.paymentMethod,
+                        })
                     ) {
                         throw new Error("IDEMPOTENCY_KEY_CONFLICT");
                     }
