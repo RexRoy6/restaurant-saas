@@ -252,6 +252,14 @@ export default function PaymentModal({
   ) => {
     event.preventDefault();
 
+    if (paymentAttemptRef.current !== null) {
+      setFormError(
+        "Ya existe un intento de pago pendiente. " +
+        "Verifica su resultado antes de realizar otro cobro.",
+      );
+      return;
+    }
+
     if (!storageReady) {
       setFormError(
         "No se ha podido verificar el intento " +
@@ -305,23 +313,7 @@ export default function PaymentModal({
       return;
     }
 
-    const previousAttempt = paymentAttemptRef.current;
-
-    if (
-      previousAttempt &&
-      (
-        previousAttempt.amountInCents !== amountInCents ||
-        previousAttempt.paymentMethod !== paymentMethod
-      )
-    ) {
-      setFormError(
-        "Existe un intento de pago anterior cuyo resultado " +
-        "debe verificarse antes de cambiar el monto o método.",
-      );
-      return;
-    }
-
-    const attempt = previousAttempt ?? {
+    const attempt = {
       idempotencyKey: crypto.randomUUID(),
       amountInCents,
       paymentMethod,

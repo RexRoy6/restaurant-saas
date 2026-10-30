@@ -8,6 +8,7 @@ import { db } from "@/db";
 import {
   categories,
   checks,
+  orderItemModifiers,
   orderItems,
   orders,
   products,
@@ -15,24 +16,116 @@ import {
 
 import { requireAuth } from "@/lib/auth/requireAuth";
 import { tenantDb } from "@/lib/db/tenantDb";
+import {
+  ModifierValidationError,
+  validateOrderModifiers,
+} from "@/modules/orders/server/validateOrderModifiers";
 
+// type RequestedItem = {
+//   productId: number;
+//   quantity: number;
+// };
 type RequestedItem = {
   productId: number;
   quantity: number;
+  modifierOptionIds: number[];
 };
 
-/*
- * ============================================
- * REQUEST PARSER
- * ============================================
+// /*
+//  * ============================================
+//  * REQUEST PARSER
+//  * ============================================
+//  *
+//  * El frontend únicamente controla:
+//  *
+//  * - productId
+//  * - quantity
+//  *
+//  * Precio, nombre, SKU, categoría y subtotales
+//  * siempre son determinados por el backend.
+//  */
+// function parseItems(
+//   body: unknown,
+// ): RequestedItem[] | null {
+//   if (
+//     typeof body !== "object" ||
+//     body === null ||
+//     !("items" in body) ||
+//     !Array.isArray(body.items) ||
+//     body.items.length === 0
+//   ) {
+//     return null;
+//   }
+
+//   const consolidated =
+//     new Map<number, number>();
+
+//   for (const item of body.items) {
+//     if (
+//       typeof item !== "object" ||
+//       item === null ||
+//       !("productId" in item) ||
+//       !("quantity" in item)
+//     ) {
+//       return null;
+//     }
+
+//     const productId = item.productId;
+//     const quantity = item.quantity;
+
+//     if (
+//       typeof productId !== "number" ||
+//       !Number.isInteger(productId) ||
+//       productId <= 0 ||
+//       typeof quantity !== "number" ||
+//       !Number.isInteger(quantity) ||
+//       quantity <= 0
+//     ) {
+//       return null;
+//     }
+
+//     /*
+//      * Si el mismo producto aparece varias veces,
+//      * consolidamos sus cantidades.
+//      */
+//     const currentQuantity =
+//       consolidated.get(productId) ?? 0;
+
+//     const consolidatedQuantity =
+//       currentQuantity + quantity;
+
+//     if (
+//       !Number.isSafeInteger(
+//         consolidatedQuantity,
+//       )
+//     ) {
+//       return null;
+//     }
+
+//     consolidated.set(
+//       productId,
+//       consolidatedQuantity,
+//     );
+//   }
+
+//   return Array.from(
+//     consolidated,
+//     ([productId, quantity]) => ({
+//       productId,
+//       quantity,
+//     }),
+//   );
+// }
+
+/**
+ * Valida la estructura de los artículos solicitados.
  *
- * El frontend únicamente controla:
+ * IMPORTANTE:
+ * Aquí solamente validamos los tipos y formatos.
  *
- * - productId
- * - quantity
- *
- * Precio, nombre, SKU, categoría y subtotales
- * siempre son determinados por el backend.
+ * La existencia, disponibilidad, pertenencia
+ * y reglas de los modificadores se validarán
+ * posteriormente dentro de la transacción.
  */
 function parseItems(
   body: unknown,
@@ -47,66 +140,72 @@ function parseItems(
     return null;
   }
 
-  const consolidated =
-    new Map<number, number>();
+  const result: RequestedItem[] = [];
 
-  for (const item of body.items) {
+  for (const rawItem of body.items) {
     if (
-      typeof item !== "object" ||
-      item === null ||
-      !("productId" in item) ||
-      !("quantity" in item)
+      typeof rawItem !== "object" ||
+      rawItem === null ||
+      Array.isArray(rawItem)
     ) {
       return null;
     }
+
+    const item = rawItem as Record<string, unknown>;
 
     const productId = item.productId;
     const quantity = item.quantity;
 
     if (
       typeof productId !== "number" ||
-      !Number.isInteger(productId) ||
+      !Number.isSafeInteger(productId) ||
       productId <= 0 ||
       typeof quantity !== "number" ||
-      !Number.isInteger(quantity) ||
+      !Number.isSafeInteger(quantity) ||
       quantity <= 0
     ) {
       return null;
     }
 
-    /*
-     * Si el mismo producto aparece varias veces,
-     * consolidamos sus cantidades.
-     */
-    const currentQuantity =
-      consolidated.get(productId) ?? 0;
+    const rawModifierOptionIds =
+      item.modifierOptionIds ?? [];
 
-    const consolidatedQuantity =
-      currentQuantity + quantity;
+    if (!Array.isArray(rawModifierOptionIds)) {
+      return null;
+    }
 
+    const modifierOptionIds: number[] = [];
+
+    for (const optionId of rawModifierOptionIds) {
+      if (
+        typeof optionId !== "number" ||
+        !Number.isSafeInteger(optionId) ||
+        optionId <= 0
+      ) {
+        return null;
+      }
+
+      modifierOptionIds.push(optionId);
+    }
+
+    // No permitimos seleccionar dos veces
+    // la misma opción dentro de un artículo.
     if (
-      !Number.isSafeInteger(
-        consolidatedQuantity,
-      )
+      new Set(modifierOptionIds).size !==
+      modifierOptionIds.length
     ) {
       return null;
     }
 
-    consolidated.set(
-      productId,
-      consolidatedQuantity,
-    );
-  }
-
-  return Array.from(
-    consolidated,
-    ([productId, quantity]) => ({
+    result.push({
       productId,
       quantity,
-    }),
-  );
-}
+      modifierOptionIds,
+    });
+  }
 
+  return result;
+}
 export async function POST(
   request: Request,
   context: {
@@ -212,9 +311,16 @@ export async function POST(
          * Una sola consulta para todos los
          * productos solicitados.
          */
-        const productIds = items.map(
-          (item) => item.productId,
-        );
+        // const productIds = items.map(
+        //   (item) => item.productId,
+        // );
+
+        const productIds = [
+          ...new Set(
+            items.map((item) => item.productId),
+          ),
+        ];
+
 
         const productList =
           await tenant.findMany(
@@ -294,6 +400,31 @@ export async function POST(
           );
         }
 
+        //modifiers
+
+        /*
+         * ========================================
+         * MODIFIER VALIDATION
+         * ========================================
+         *
+         * Validamos las opciones solicitadas
+         * antes de crear la orden.
+         *
+         * No guardamos todavía los modificadores.
+         * La persistencia llegará en la 4.6.3.
+         */
+
+        const validatedModifierItems =
+          await validateOrderModifiers(
+            tenant,
+            items.map((item) => ({
+              productId: item.productId,
+              modifierOptionIds: item.modifierOptionIds,
+            })),
+          );
+
+
+
         /*
          * ========================================
          * LOOKUP MAPS
@@ -326,68 +457,92 @@ export async function POST(
          * sobrevivir aunque posteriormente cambie
          * el Product o Category.
          */
-        const snapshots = items.map(
-          (item) => {
-            const product =
-              productById.get(
-                item.productId,
-              );
 
-            if (!product) {
-              throw new Error(
-                "PRODUCT_NOT_AVAILABLE",
-              );
-            }
+        const snapshots = items.map((item, index) => {
+          const product = productById.get(item.productId);
 
-            const category =
-              categoryById.get(
-                product.categoryId,
-              );
+          if (!product) {
+            throw new Error("PRODUCT_NOT_AVAILABLE");
+          }
 
-            if (!category) {
-              throw new Error(
-                "CATEGORY_NOT_AVAILABLE",
-              );
-            }
+          const category = categoryById.get(
+            product.categoryId,
+          );
 
-            const subtotalInCents =
-              product.priceInCents *
-              item.quantity;
+          if (!category) {
+            throw new Error("CATEGORY_NOT_AVAILABLE");
+          }
 
-            if (
-              !Number.isSafeInteger(
-                subtotalInCents,
-              ) ||
-              subtotalInCents < 0
-            ) {
-              throw new Error(
-                "INVALID_ORDER_TOTAL",
-              );
-            }
+          const validatedItem =
+            validatedModifierItems[index];
 
-            return {
-              productId:
-                product.id,
+          if (
+            !validatedItem ||
+            validatedItem.productId !== item.productId
+          ) {
+            throw new Error("INVALID_ORDER_MODIFIERS");
+          }
 
-              productName:
-                product.name,
+          const modifiers = validatedItem.modifiers;
 
-              sku:
-                product.sku,
+          // Sumar recargos de las opciones seleccionadas.
+          const modifiersTotalInCents = modifiers.reduce(
+            (total, modifier) => {
+              const nextTotal =
+                total + modifier.priceInCents;
 
-              categoryName:
-                category.name,
+              if (
+                !Number.isSafeInteger(nextTotal) ||
+                nextTotal < 0
+              ) {
+                throw new Error("INVALID_ORDER_TOTAL");
+              }
 
-              unitPriceInCents:
-                product.priceInCents,
+              return nextTotal;
+            },
+            0,
+          );
 
-              quantity:
-                item.quantity,
+          // Precio final de UNA unidad del producto.
+          const unitPriceInCents =
+            product.priceInCents +
+            modifiersTotalInCents;
 
-              subtotalInCents,
-            };
-          },
-        );
+          if (
+            !Number.isSafeInteger(unitPriceInCents) ||
+            unitPriceInCents < 0
+          ) {
+            throw new Error("INVALID_ORDER_TOTAL");
+          }
+
+          // Precio total del renglón.
+          const subtotalInCents =
+            unitPriceInCents * item.quantity;
+
+          if (
+            !Number.isSafeInteger(subtotalInCents) ||
+            subtotalInCents < 0
+          ) {
+            throw new Error("INVALID_ORDER_TOTAL");
+          }
+
+          return {
+            productId: product.id,
+            productName: product.name,
+            sku: product.sku,
+            categoryName: category.name,
+
+            baseUnitPriceInCents: product.priceInCents,
+            unitPriceInCents,
+
+            quantity: item.quantity,
+            subtotalInCents,
+
+            // Snapshot de las opciones validadas.
+            modifiers,
+          };
+        });
+
 
         /*
          * ========================================
@@ -452,37 +607,63 @@ export async function POST(
          * CREATE ORDER ITEMS
          * ========================================
          */
-        for (
-          const snapshot of snapshots
-        ) {
-          await tenant.insert(
+
+        for (const snapshot of snapshots) {
+          // 1. Crear el artículo del pedido.
+          const itemResult = await tenant.insert(
             orderItems,
             {
               orderId,
 
-              productId:
-                snapshot.productId,
+              productId: snapshot.productId,
+              productName: snapshot.productName,
+              sku: snapshot.sku,
+              categoryName: snapshot.categoryName,
 
-              productName:
-                snapshot.productName,
-
-              sku:
-                snapshot.sku,
-
-              categoryName:
-                snapshot.categoryName,
+              baseUnitPriceInCents:
+                snapshot.baseUnitPriceInCents,
 
               unitPriceInCents:
                 snapshot.unitPriceInCents,
 
-              quantity:
-                snapshot.quantity,
+              quantity: snapshot.quantity,
 
               subtotalInCents:
                 snapshot.subtotalInCents,
             },
           );
+
+          const orderItemId = Number(
+            itemResult[0].insertId,
+          );
+
+          if (
+            !Number.isSafeInteger(orderItemId) ||
+            orderItemId <= 0
+          ) {
+            throw new Error("ORDER_ITEM_CREATION_FAILED");
+          }
+
+          // 2. Guardar los snapshots históricos
+          // de cada opción seleccionada.
+          for (const modifier of snapshot.modifiers) {
+            await tenant.insert(
+              orderItemModifiers,
+              {
+                orderItemId,
+
+                modifierGroupId: modifier.groupId,
+                modifierOptionId: modifier.optionId,
+
+                groupName: modifier.groupName,
+                optionName: modifier.optionName,
+
+                priceInCents: modifier.priceInCents,
+              },
+            );
+          }
         }
+
 
         /*
          * Si llegamos aquí, la transaction hace
@@ -508,6 +689,19 @@ export async function POST(
       error instanceof Error
         ? error.message
         : "Internal server error";
+
+
+    if (error instanceof ModifierValidationError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
 
     /*
      * ============================================
@@ -559,9 +753,9 @@ export async function POST(
 
     if (
       message ===
-        "PRODUCT_NOT_AVAILABLE" ||
+      "PRODUCT_NOT_AVAILABLE" ||
       message ===
-        "CATEGORY_NOT_AVAILABLE"
+      "CATEGORY_NOT_AVAILABLE"
     ) {
       return NextResponse.json(
         {
@@ -581,6 +775,25 @@ export async function POST(
         { status: 400 },
       );
     }
+
+    if (message === "INVALID_ORDER_MODIFIERS") {
+      return NextResponse.json(
+        {
+          error: "Invalid order modifiers",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (message === "ORDER_ITEM_CREATION_FAILED") {
+      return NextResponse.json(
+        {
+          error: "Could not create order item",
+        },
+        { status: 500 },
+      );
+    }
+
 
     if (
       message ===

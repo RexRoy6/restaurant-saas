@@ -209,13 +209,23 @@ export default function CheckDetail({
         }
     };
 
+
     const handleCreateOrder = async (
         input: Parameters<
             typeof addOrder
         >[0],
     ) => {
+        if (
+            hasPendingPaymentAttempt ||
+            paymentStorageError ||
+            Boolean(syncError)
+        ) {
+            return false;
+        }
+
         return addOrder(input);
     };
+
     // console.log(check);
     return (
         <>
@@ -445,9 +455,17 @@ export default function CheckDetail({
                                         check.status === "OPEN" &&
                                         check.paidInCents === 0
                                     }
-                                    onStatusChange={
-                                        changeOrderStatus
-                                    }
+                                    onStatusChange={async (...args) => {
+                                        if (
+                                            hasPendingPaymentAttempt ||
+                                            paymentStorageError ||
+                                            Boolean(syncError)
+                                        ) {
+                                            return false;
+                                        }
+
+                                        return changeOrderStatus(...args);
+                                    }}
                                     onCancel={(orderId) => {
                                         clearError();
 
@@ -543,9 +561,17 @@ export default function CheckDetail({
                             null,
                         );
                     }}
-                    onCancel={
-                        cancelExistingOrder
-                    }
+                    onCancel={async (...args) => {
+                        if (
+                            hasPendingPaymentAttempt ||
+                            paymentStorageError ||
+                            Boolean(syncError)
+                        ) {
+                            return false;
+                        }
+
+                        return cancelExistingOrder(...args);
+                    }}
                 />
             )}
             {showPaymentModal && (
@@ -579,9 +605,17 @@ export default function CheckDetail({
                                 false,
                             );
                         }}
-                        onCancel={
-                            cancelCurrentCheck
-                        }
+                        onCancel={async (...args) => {
+                            if (
+                                hasPendingPaymentAttempt ||
+                                paymentStorageError ||
+                                Boolean(syncError)
+                            ) {
+                                return false;
+                            }
+
+                            return cancelCurrentCheck(...args);
+                        }}
                     />
                 )}
 
