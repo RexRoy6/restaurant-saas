@@ -15,6 +15,10 @@ import {
 
 import { requireAuth } from "@/lib/auth/requireAuth";
 import { tenantDb } from "@/lib/db/tenantDb";
+import {
+  ModifierValidationError,
+  validateOrderModifiers,
+} from "@/modules/orders/server/validateOrderModifiers";
 
 // type RequestedItem = {
 //   productId: number;
@@ -395,6 +399,28 @@ export async function POST(
           );
         }
 
+        //modifiers
+
+        /*
+         * ========================================
+         * MODIFIER VALIDATION
+         * ========================================
+         *
+         * Validamos las opciones solicitadas
+         * antes de crear la orden.
+         *
+         * No guardamos todavía los modificadores.
+         * La persistencia llegará en la 4.6.3.
+         */
+        await validateOrderModifiers(
+          tenant,
+          items.map((item) => ({
+            productId: item.productId,
+            modifierOptionIds: item.modifierOptionIds,
+          })),
+        );
+
+
         /*
          * ========================================
          * LOOKUP MAPS
@@ -615,6 +641,19 @@ export async function POST(
       error instanceof Error
         ? error.message
         : "Internal server error";
+
+
+    if (error instanceof ModifierValidationError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
 
     /*
      * ============================================
