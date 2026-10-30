@@ -283,22 +283,22 @@ export async function POST(
 
         // Incluye asociaciones desactivadas, pero
         // conserva el aislamiento por empresa.
-        const existing = await tenant.findFirstRaw(
-            productModifierGroups,
-            eq(productModifierGroups.productId, productId),
-        );
+        // const existing = await tenant.findFirstRaw(
+        //     productModifierGroups,
+        //     eq(productModifierGroups.productId, productId),
+        // );
 
-        // Buscamos específicamente el grupo solicitado,
-        // sin confundirlo con otras asociaciones.
-        const assignment = existing?.groupId === groupId
-            ? existing
-            : await tenant.findFirstRaw(
-                productModifierGroups,
-                eq(
-                    productModifierGroups.groupId,
-                    groupId,
-                ),
-            );
+        // // Buscamos específicamente el grupo solicitado,
+        // // sin confundirlo con otras asociaciones.
+        // const assignment = existing?.groupId === groupId
+        //     ? existing
+        //     : await tenant.findFirstRaw(
+        //         productModifierGroups,
+        //         eq(
+        //             productModifierGroups.groupId,
+        //             groupId,
+        //         ),
+        //     );
 
         // La búsqueda anterior por groupId puede encontrar
         // otro producto: comprobamos ambos identificadores.
