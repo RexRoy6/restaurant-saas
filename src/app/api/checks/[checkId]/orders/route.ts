@@ -16,23 +16,111 @@ import {
 import { requireAuth } from "@/lib/auth/requireAuth";
 import { tenantDb } from "@/lib/db/tenantDb";
 
+// type RequestedItem = {
+//   productId: number;
+//   quantity: number;
+// };
 type RequestedItem = {
   productId: number;
   quantity: number;
+  modifierOptionIds: number[];
 };
 
-/*
- * ============================================
- * REQUEST PARSER
- * ============================================
+// /*
+//  * ============================================
+//  * REQUEST PARSER
+//  * ============================================
+//  *
+//  * El frontend únicamente controla:
+//  *
+//  * - productId
+//  * - quantity
+//  *
+//  * Precio, nombre, SKU, categoría y subtotales
+//  * siempre son determinados por el backend.
+//  */
+// function parseItems(
+//   body: unknown,
+// ): RequestedItem[] | null {
+//   if (
+//     typeof body !== "object" ||
+//     body === null ||
+//     !("items" in body) ||
+//     !Array.isArray(body.items) ||
+//     body.items.length === 0
+//   ) {
+//     return null;
+//   }
+
+//   const consolidated =
+//     new Map<number, number>();
+
+//   for (const item of body.items) {
+//     if (
+//       typeof item !== "object" ||
+//       item === null ||
+//       !("productId" in item) ||
+//       !("quantity" in item)
+//     ) {
+//       return null;
+//     }
+
+//     const productId = item.productId;
+//     const quantity = item.quantity;
+
+//     if (
+//       typeof productId !== "number" ||
+//       !Number.isInteger(productId) ||
+//       productId <= 0 ||
+//       typeof quantity !== "number" ||
+//       !Number.isInteger(quantity) ||
+//       quantity <= 0
+//     ) {
+//       return null;
+//     }
+
+//     /*
+//      * Si el mismo producto aparece varias veces,
+//      * consolidamos sus cantidades.
+//      */
+//     const currentQuantity =
+//       consolidated.get(productId) ?? 0;
+
+//     const consolidatedQuantity =
+//       currentQuantity + quantity;
+
+//     if (
+//       !Number.isSafeInteger(
+//         consolidatedQuantity,
+//       )
+//     ) {
+//       return null;
+//     }
+
+//     consolidated.set(
+//       productId,
+//       consolidatedQuantity,
+//     );
+//   }
+
+//   return Array.from(
+//     consolidated,
+//     ([productId, quantity]) => ({
+//       productId,
+//       quantity,
+//     }),
+//   );
+// }
+
+/**
+ * Valida la estructura de los artículos solicitados.
  *
- * El frontend únicamente controla:
+ * IMPORTANTE:
+ * Aquí solamente validamos los tipos y formatos.
  *
- * - productId
- * - quantity
- *
- * Precio, nombre, SKU, categoría y subtotales
- * siempre son determinados por el backend.
+ * La existencia, disponibilidad, pertenencia
+ * y reglas de los modificadores se validarán
+ * posteriormente dentro de la transacción.
  */
 function parseItems(
   body: unknown,
@@ -47,66 +135,72 @@ function parseItems(
     return null;
   }
 
-  const consolidated =
-    new Map<number, number>();
+  const result: RequestedItem[] = [];
 
-  for (const item of body.items) {
+  for (const rawItem of body.items) {
     if (
-      typeof item !== "object" ||
-      item === null ||
-      !("productId" in item) ||
-      !("quantity" in item)
+      typeof rawItem !== "object" ||
+      rawItem === null ||
+      Array.isArray(rawItem)
     ) {
       return null;
     }
+
+    const item = rawItem as Record<string, unknown>;
 
     const productId = item.productId;
     const quantity = item.quantity;
 
     if (
       typeof productId !== "number" ||
-      !Number.isInteger(productId) ||
+      !Number.isSafeInteger(productId) ||
       productId <= 0 ||
       typeof quantity !== "number" ||
-      !Number.isInteger(quantity) ||
+      !Number.isSafeInteger(quantity) ||
       quantity <= 0
     ) {
       return null;
     }
 
-    /*
-     * Si el mismo producto aparece varias veces,
-     * consolidamos sus cantidades.
-     */
-    const currentQuantity =
-      consolidated.get(productId) ?? 0;
+    const rawModifierOptionIds =
+      item.modifierOptionIds ?? [];
 
-    const consolidatedQuantity =
-      currentQuantity + quantity;
+    if (!Array.isArray(rawModifierOptionIds)) {
+      return null;
+    }
 
+    const modifierOptionIds: number[] = [];
+
+    for (const optionId of rawModifierOptionIds) {
+      if (
+        typeof optionId !== "number" ||
+        !Number.isSafeInteger(optionId) ||
+        optionId <= 0
+      ) {
+        return null;
+      }
+
+      modifierOptionIds.push(optionId);
+    }
+
+    // No permitimos seleccionar dos veces
+    // la misma opción dentro de un artículo.
     if (
-      !Number.isSafeInteger(
-        consolidatedQuantity,
-      )
+      new Set(modifierOptionIds).size !==
+      modifierOptionIds.length
     ) {
       return null;
     }
 
-    consolidated.set(
-      productId,
-      consolidatedQuantity,
-    );
-  }
-
-  return Array.from(
-    consolidated,
-    ([productId, quantity]) => ({
+    result.push({
       productId,
       quantity,
-    }),
-  );
-}
+      modifierOptionIds,
+    });
+  }
 
+  return result;
+}
 export async function POST(
   request: Request,
   context: {
@@ -212,9 +306,16 @@ export async function POST(
          * Una sola consulta para todos los
          * productos solicitados.
          */
-        const productIds = items.map(
-          (item) => item.productId,
-        );
+        // const productIds = items.map(
+        //   (item) => item.productId,
+        // );
+
+        const productIds = [
+          ...new Set(
+            items.map((item) => item.productId),
+          ),
+        ];
+
 
         const productList =
           await tenant.findMany(

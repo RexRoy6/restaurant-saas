@@ -82,9 +82,22 @@ export type CreateCheckInput = {
   note?: string;
 };
 
+// export type CreateOrderItemInput = {
+//   productId: number;
+//   quantity: number;
+// };
 export type CreateOrderItemInput = {
   productId: number;
   quantity: number;
+
+  /**
+   * IDs de opciones seleccionadas.
+   *
+   * No incluye precios ni nombres.
+   * El backend obtiene esos valores
+   * desde la base de datos.
+   */
+  modifierOptionIds?: number[];
 };
 
 export type CreateOrderInput = {
