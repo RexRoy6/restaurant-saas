@@ -8,6 +8,7 @@ import { db } from "@/db";
 import {
   categories,
   checks,
+  orderItemModifiers,
   orderItems,
   orders,
   products,
@@ -412,13 +413,16 @@ export async function POST(
          * No guardamos todavía los modificadores.
          * La persistencia llegará en la 4.6.3.
          */
-        await validateOrderModifiers(
-          tenant,
-          items.map((item) => ({
-            productId: item.productId,
-            modifierOptionIds: item.modifierOptionIds,
-          })),
-        );
+
+        const validatedModifierItems =
+          await validateOrderModifiers(
+            tenant,
+            items.map((item) => ({
+              productId: item.productId,
+              modifierOptionIds: item.modifierOptionIds,
+            })),
+          );
+
 
 
         /*
@@ -453,71 +457,92 @@ export async function POST(
          * sobrevivir aunque posteriormente cambie
          * el Product o Category.
          */
-        const snapshots = items.map(
-          (item) => {
-            const product =
-              productById.get(
-                item.productId,
-              );
 
-            if (!product) {
-              throw new Error(
-                "PRODUCT_NOT_AVAILABLE",
-              );
-            }
+        const snapshots = items.map((item, index) => {
+          const product = productById.get(item.productId);
 
-            const category =
-              categoryById.get(
-                product.categoryId,
-              );
+          if (!product) {
+            throw new Error("PRODUCT_NOT_AVAILABLE");
+          }
 
-            if (!category) {
-              throw new Error(
-                "CATEGORY_NOT_AVAILABLE",
-              );
-            }
+          const category = categoryById.get(
+            product.categoryId,
+          );
 
-            const subtotalInCents =
-              product.priceInCents *
-              item.quantity;
+          if (!category) {
+            throw new Error("CATEGORY_NOT_AVAILABLE");
+          }
 
-            if (
-              !Number.isSafeInteger(
-                subtotalInCents,
-              ) ||
-              subtotalInCents < 0
-            ) {
-              throw new Error(
-                "INVALID_ORDER_TOTAL",
-              );
-            }
+          const validatedItem =
+            validatedModifierItems[index];
 
-            return {
-              productId:
-                product.id,
+          if (
+            !validatedItem ||
+            validatedItem.productId !== item.productId
+          ) {
+            throw new Error("INVALID_ORDER_MODIFIERS");
+          }
 
-              productName:
-                product.name,
+          const modifiers = validatedItem.modifiers;
 
-              sku:
-                product.sku,
+          // Sumar recargos de las opciones seleccionadas.
+          const modifiersTotalInCents = modifiers.reduce(
+            (total, modifier) => {
+              const nextTotal =
+                total + modifier.priceInCents;
 
-              categoryName:
-                category.name,
+              if (
+                !Number.isSafeInteger(nextTotal) ||
+                nextTotal < 0
+              ) {
+                throw new Error("INVALID_ORDER_TOTAL");
+              }
 
-              baseUnitPriceInCents:
-                product.priceInCents,
+              return nextTotal;
+            },
+            0,
+          );
 
-              unitPriceInCents:
-                product.priceInCents,
+          // Precio final de UNA unidad del producto.
+          const unitPriceInCents =
+            product.priceInCents +
+            modifiersTotalInCents;
 
-              quantity:
-                item.quantity,
+          if (
+            !Number.isSafeInteger(unitPriceInCents) ||
+            unitPriceInCents < 0
+          ) {
+            throw new Error("INVALID_ORDER_TOTAL");
+          }
 
-              subtotalInCents,
-            };
-          },
-        );
+          // Precio total del renglón.
+          const subtotalInCents =
+            unitPriceInCents * item.quantity;
+
+          if (
+            !Number.isSafeInteger(subtotalInCents) ||
+            subtotalInCents < 0
+          ) {
+            throw new Error("INVALID_ORDER_TOTAL");
+          }
+
+          return {
+            productId: product.id,
+            productName: product.name,
+            sku: product.sku,
+            categoryName: category.name,
+
+            baseUnitPriceInCents: product.priceInCents,
+            unitPriceInCents,
+
+            quantity: item.quantity,
+            subtotalInCents,
+
+            // Snapshot de las opciones validadas.
+            modifiers,
+          };
+        });
+
 
         /*
          * ========================================
@@ -582,25 +607,18 @@ export async function POST(
          * CREATE ORDER ITEMS
          * ========================================
          */
-        for (
-          const snapshot of snapshots
-        ) {
-          await tenant.insert(
+
+        for (const snapshot of snapshots) {
+          // 1. Crear el artículo del pedido.
+          const itemResult = await tenant.insert(
             orderItems,
             {
               orderId,
 
-              productId:
-                snapshot.productId,
-
-              productName:
-                snapshot.productName,
-
-              sku:
-                snapshot.sku,
-
-              categoryName:
-                snapshot.categoryName,
+              productId: snapshot.productId,
+              productName: snapshot.productName,
+              sku: snapshot.sku,
+              categoryName: snapshot.categoryName,
 
               baseUnitPriceInCents:
                 snapshot.baseUnitPriceInCents,
@@ -608,14 +626,44 @@ export async function POST(
               unitPriceInCents:
                 snapshot.unitPriceInCents,
 
-              quantity:
-                snapshot.quantity,
+              quantity: snapshot.quantity,
 
               subtotalInCents:
                 snapshot.subtotalInCents,
             },
           );
+
+          const orderItemId = Number(
+            itemResult[0].insertId,
+          );
+
+          if (
+            !Number.isSafeInteger(orderItemId) ||
+            orderItemId <= 0
+          ) {
+            throw new Error("ORDER_ITEM_CREATION_FAILED");
+          }
+
+          // 2. Guardar los snapshots históricos
+          // de cada opción seleccionada.
+          for (const modifier of snapshot.modifiers) {
+            await tenant.insert(
+              orderItemModifiers,
+              {
+                orderItemId,
+
+                modifierGroupId: modifier.groupId,
+                modifierOptionId: modifier.optionId,
+
+                groupName: modifier.groupName,
+                optionName: modifier.optionName,
+
+                priceInCents: modifier.priceInCents,
+              },
+            );
+          }
         }
+
 
         /*
          * Si llegamos aquí, la transaction hace
@@ -727,6 +775,25 @@ export async function POST(
         { status: 400 },
       );
     }
+
+    if (message === "INVALID_ORDER_MODIFIERS") {
+      return NextResponse.json(
+        {
+          error: "Invalid order modifiers",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (message === "ORDER_ITEM_CREATION_FAILED") {
+      return NextResponse.json(
+        {
+          error: "Could not create order item",
+        },
+        { status: 500 },
+      );
+    }
+
 
     if (
       message ===
