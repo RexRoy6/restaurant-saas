@@ -1,6 +1,7 @@
 
 import type {
   ModifierGroup,
+  ModifierOption,
   ModifierGroupInput,
   ModifierGroupUpdateInput,
   ModifierOptionInput,
@@ -165,5 +166,26 @@ export async function restoreModifierOption(
     {
       method: "PATCH",
     },
+  );
+}
+// Si ModifierGroup ya está importado arriba,
+// agrégalo al import existente en lugar de duplicarlo.
+
+export async function getInactiveModifierGroups():
+  Promise<ModifierGroup[]> {
+  const response = await request(
+    "/api/modifier-groups/inactive",
+  );
+
+  return response.json();
+}
+
+export async function getInactiveModifierOptions(
+  groupId: number,
+): Promise<ModifierOption[]> {
+  // Esta ruta aún no existe en nuestro backend.
+  // No la llamaremos hasta implementarla.
+  throw new Error(
+    `La consulta de opciones inactivas del grupo ${groupId} todavía requiere un endpoint.`,
   );
 }
