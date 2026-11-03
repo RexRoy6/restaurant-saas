@@ -103,29 +103,54 @@ export async function getCheck(
   checkId: number,
   signal?: AbortSignal,
 ): Promise<Check> {
-  const response = await fetch(
-    `/api/checks/${checkId}`,
-    {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-      //Si la consulta tarda más de 15 segundos, se cancela automáticamente.
-      signal: signal
-        ? AbortSignal.any([
-          signal,
-          AbortSignal.timeout(15_000),
-        ])
-        : AbortSignal.timeout(15_000),
-    },
-  );
+  const controller = new AbortController();
 
-  if (!response.ok) {
-    throw new Error(
-      await getErrorMessage(response),
-    );
+  // Cancelar si el componente ya no necesita la petición.
+  const onAbort = () => {
+    controller.abort();
+  };
+
+  // Conectar la señal externa con nuestro controlador.
+  if (signal?.aborted) {
+    controller.abort();
+  } else {
+    signal?.addEventListener("abort", onAbort, {
+      once: true,
+    });
   }
 
-  return response.json();
+  // Timeout de 15 segundos.
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, 15_000);
+
+  try {
+    const response = await fetch(
+      `/api/checks/${checkId}`,
+      {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        signal: controller.signal,
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        await getErrorMessage(response),
+      );
+    }
+
+    return await response.json();
+  } finally {
+    // Evitar temporizadores y listeners pendientes.
+    clearTimeout(timeoutId);
+
+    signal?.removeEventListener(
+      "abort",
+      onAbort,
+    );
+  }
 }
 
 export async function createCheck(
